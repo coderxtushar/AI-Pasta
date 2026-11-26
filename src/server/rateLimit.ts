@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { safeErrorMessage } from "@/app/library/redact";
 
 export type LimitName = "generate" | "comparisons" | "keys";
 
@@ -95,7 +96,7 @@ export async function enforceRateLimit(
     // Log at most once a minute so an outage doesn't flood the logs.
     if (Date.now() - lastFailureLog > 60_000) {
       lastFailureLog = Date.now();
-      console.error("Rate limiter unavailable, allowing requests:", e instanceof Error ? e.message : e);
+      console.error("Rate limiter unavailable, allowing requests:", safeErrorMessage(e));
     }
     return null;
   }

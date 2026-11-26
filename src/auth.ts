@@ -1,4 +1,5 @@
 import { unstable_rethrow } from "next/navigation";
+import { safeErrorMessage } from "@/app/library/redact";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
@@ -14,6 +15,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Reads AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET from the environment.
   providers: [Google],
   session: { strategy: "database" },
+  // The default logger prints failed database queries with their parameters,
+  // which include session tokens. Log the error without them.
+  logger: {
+    error(error) {
+      // Auth.js errors carry a readable `type` (class names are minified in
+      // production) and wrap the underlying error as `cause.err`.
+      const { type, cause } = error as Error & { type?: string; cause?: { err?: unknown } };
+      console.error(`[auth][error] ${type ?? error.name}:`, safeErrorMessage(cause?.err ?? error));
+    },
+  },
   callbacks: {
     session({ session, user }) {
       session.user.id = user.id;
@@ -46,7 +57,7 @@ export async function getSessionSafe() {
   } catch (e) {
     // Let Next.js's internal control-flow errors (dynamic rendering, redirects) through.
     unstable_rethrow(e);
-    console.error("Session lookup failed:", e instanceof Error ? e.message : e);
+    console.error("Session lookup failed:", safeErrorMessage(e));
     return null;
   }
 }

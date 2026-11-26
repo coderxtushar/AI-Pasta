@@ -5,6 +5,10 @@ import { listComparisons } from "@/server/comparisons";
 import { findModel } from "../library/models";
 import { deleteComparisonAction, signInAction } from "../actions";
 
+// Always render per request: whether accounts are enabled is read from runtime
+// env vars, and a build without them must not bake in a static 404.
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "History · AI Pasta" };
 
 const card: React.CSSProperties = {
