@@ -41,7 +41,7 @@ function formatMetrics(m: GenerateMetrics): string {
 const Model: React.FC<ModelProps> = ({ label, state }) => {
   const status = STATUS_STYLE[state.status];
   return (
-    <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 6 }}>
+    <section aria-label={label} style={{ border: "1px solid #ddd", padding: 12, borderRadius: 6 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
         <h3 style={{ margin: 0 }}>{label}</h3>
         <span style={{ fontSize: 12, fontWeight: 600, color: status.color }}>{status.text}</span>
@@ -56,7 +56,7 @@ const Model: React.FC<ModelProps> = ({ label, state }) => {
       {state.metrics && (
         <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>{formatMetrics(state.metrics)}</div>
       )}
-    </div>
+    </section>
   );
 };
 
