@@ -2,23 +2,16 @@ export type ProviderId = "openai" | "anthropic" | "google" | "deepseek" | "groq"
 
 export type ProviderInfo = {
   label: string;
-  /** Base URL for OpenAI-compatible APIs. Unset means the provider's own SDK default. */
-  baseURL?: string;
 };
 
+// Client-safe metadata. SDK wiring lives in src/server/llm.ts.
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   openai: { label: "OpenAI" },
   anthropic: { label: "Anthropic" },
-  google: {
-    label: "Gemini",
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-  },
-  deepseek: { label: "DeepSeek", baseURL: "https://api.deepseek.com" },
-  groq: { label: "Groq", baseURL: "https://api.groq.com/openai/v1" },
-  qwen: {
-    label: "Qwen",
-    baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-  },
+  google: { label: "Gemini" },
+  deepseek: { label: "DeepSeek" },
+  groq: { label: "Groq" },
+  qwen: { label: "Qwen" },
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[];
