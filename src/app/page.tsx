@@ -1,38 +1,90 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import Model from "./components/Model";
+import React, { useEffect, useRef, useState } from "react";
+import Model, { type RunState } from "./components/Model";
 import ApiManager from "./components/ApiManager";
 import { MODELS, findModel } from "./library/models";
-import type { ApiKeys } from "./library/providers";
+import { PROVIDERS, type ApiKeys } from "./library/providers";
 import { hasAnyKey, loadKeys } from "./library/keys";
-
-type ResultItem = {
-  model: string;
-  output?: string;
-  error?: string;
-};
-
-type CompareResponse = {
-  results?: { model: string; text?: string; error?: string }[];
-};
+import { readNdjson, type StreamEvent } from "./library/stream";
 
 export default function Page() {
   const [prompt, setPrompt] = useState("");
   const [selectedModels, setSelectedModels] = useState<string[]>(MODELS.map((m) => m.id));
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<ResultItem[]>([]);
+  const [runOrder, setRunOrder] = useState<string[]>([]);
+  const [runs, setRuns] = useState<Record<string, RunState>>({});
   const [error, setError] = useState<string | null>(null);
   const [keys, setKeys] = useState<ApiKeys>({});
   const hasKeys = hasAnyKey(keys);
+  const loading = runOrder.some((id) => runs[id]?.status === "streaming");
+
+  const abortRef = useRef<AbortController | null>(null);
+  // Ignores late updates from a previous run after a new one starts.
+  const runIdRef = useRef(0);
 
   useEffect(() => {
     setKeys(loadKeys());
+    return () => abortRef.current?.abort();
   }, []);
 
   function toggleModel(id: string) {
     setSelectedModels((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
     );
+  }
+
+  async function runModel(
+    runId: number,
+    modelId: string,
+    signal: AbortSignal,
+    update: (runId: number, modelId: string, fn: (prev: RunState) => RunState) => void
+  ) {
+    const model = findModel(modelId);
+    if (!model) return;
+    const apiKey = keys[model.provider];
+    if (!apiKey) {
+      const label = PROVIDERS[model.provider].label;
+      update(runId, modelId, (p) => ({ ...p, status: "error", error: `No ${label} API key saved.` }));
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, model: modelId, apiKey }),
+        signal,
+      });
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? `Server error ${res.status}`);
+      }
+
+      for await (const event of readNdjson<StreamEvent>(res.body)) {
+        if (event.type === "delta") {
+          update(runId, modelId, (p) => ({ ...p, text: p.text + event.text }));
+        } else if (event.type === "done") {
+          update(runId, modelId, (p) => ({ ...p, status: "done", metrics: event.metrics }));
+        } else {
+          update(runId, modelId, (p) => ({
+            ...p,
+            status: "error",
+            error: event.message,
+            metrics: event.metrics,
+          }));
+        }
+      }
+      // Stream closed without a final event (e.g. connection dropped).
+      update(runId, modelId, (p) =>
+        p.status === "streaming" ? { ...p, status: "error", error: "Connection closed early." } : p
+      );
+    } catch (err) {
+      if (signal.aborted) {
+        update(runId, modelId, (p) => (p.status === "streaming" ? { ...p, status: "stopped" } : p));
+      } else {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        update(runId, modelId, (p) => ({ ...p, status: "error", error: message }));
+      }
+    }
   }
 
   async function handleSubmit(e?: React.FormEvent) {
@@ -43,34 +95,26 @@ export default function Page() {
       return;
     }
 
-    setLoading(true);
-    setResults([]);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
 
-    try {
-      const res = await fetch("/api/compare", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, models: selectedModels, keys }),
-      });
+    // Keep the registry order so columns don't jump around between runs.
+    const ids = MODELS.map((m) => m.id).filter((id) => selectedModels.includes(id));
+    setRunOrder(ids);
+    setRuns(Object.fromEntries(ids.map((id) => [id, { status: "streaming", text: "" }])));
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Server ${res.status}: ${txt || res.statusText}`);
-      }
+    const update = (id: number, modelId: string, fn: (prev: RunState) => RunState) => {
+      if (id !== runIdRef.current) return;
+      setRuns((prev) => (prev[modelId] ? { ...prev, [modelId]: fn(prev[modelId]) } : prev));
+    };
 
-      const data: CompareResponse = await res.json();
-      const parsed: ResultItem[] = (data.results ?? []).map((r) => ({
-        model: r.model,
-        output: r.text,
-        error: r.error,
-      }));
+    await Promise.all(ids.map((id) => runModel(runId, id, controller.signal, update)));
+  }
 
-      setResults(parsed);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
+  function handleStop() {
+    abortRef.current?.abort();
   }
 
   return (
@@ -155,6 +199,24 @@ export default function Page() {
                   {loading ? "Comparing..." : "Submit"}
                 </button>
 
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleStop}
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 8,
+                      border: "1px solid #d1d5db",
+                      background: "#fff",
+                      color: "#111827",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Stop
+                  </button>
+                )}
+
                 {!hasKeys && (
                   <div style={{ color: "#b91c1c", fontSize: 13 }}>
                     API keys missing — open API Keys panel to the right.
@@ -168,16 +230,16 @@ export default function Page() {
               <div style={{ color: "red", padding: 8, borderRadius: 6, background: "#fff0f0" }}>{error}</div>
             )}
 
-            {results.length === 0 && !loading && (
+            {runOrder.length === 0 && (
               <div style={{ marginTop: 12, color: "#6b7280" }}>No results yet. Submit a prompt to compare.</div>
             )}
 
             <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-              {results.map((r) => (
-                <div key={r.model}>
-                  <Model model={findModel(r.model)?.label ?? r.model} output={r.error ? `Error: ${r.error}` : r.output ?? ""} />
-                </div>
-              ))}
+              {runOrder.map((id) =>
+                runs[id] ? (
+                  <Model key={id} label={findModel(id)?.label ?? id} state={runs[id]} />
+                ) : null
+              )}
             </div>
           </div>
         </div>
