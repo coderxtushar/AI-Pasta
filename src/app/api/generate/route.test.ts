@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { simulateReadableStream } from "ai";
+import { APICallError, simulateReadableStream } from "ai";
 import { MockLanguageModelV2 } from "ai/test";
 import type { LanguageModelV2StreamPart } from "@ai-sdk/provider";
 import { NextRequest } from "next/server";
@@ -95,6 +95,43 @@ describe("POST /api/generate: streaming", () => {
     await events(await POST(post(base)));
     expect(getLanguageModel).toHaveBeenCalledWith(expect.objectContaining({ id: "gpt-5.4-mini" }), "sk-browser");
     expect(getDecryptedApiKey).not.toHaveBeenCalled();
+  });
+
+  it("explains a rejected key without leaking it", async () => {
+    const err = new APICallError({
+      message: "Incorrect API key provided: sk-browser",
+      url: "https://api.openai.com",
+      requestBodyValues: {},
+      statusCode: 401,
+      isRetryable: false,
+    });
+    vi.mocked(getLanguageModel).mockReturnValue(failingModel(err));
+    const [event] = await events(await POST(post(base)));
+    expect(event).toMatchObject({ type: "error", message: expect.stringContaining("OpenAI rejected the API key") });
+    expect(JSON.stringify(event)).not.toContain("sk-browser");
+  });
+
+  it("retries a temporary provider outage", { timeout: 10_000 }, async () => {
+    let calls = 0;
+    const flaky = new MockLanguageModelV2({
+      doStream: async (options) => {
+        calls++;
+        if (calls === 1) {
+          throw new APICallError({
+            message: "overloaded",
+            url: "https://api.openai.com",
+            requestBodyValues: {},
+            statusCode: 503,
+            isRetryable: true,
+          });
+        }
+        return textModel(["ok"]).doStream(options);
+      },
+    });
+    vi.mocked(getLanguageModel).mockReturnValue(flaky);
+    const out = await events(await POST(post(base)));
+    expect(calls).toBe(2);
+    expect(out.at(-1)?.type).toBe("done");
   });
 
   it("turns a provider failure into an error event", async () => {

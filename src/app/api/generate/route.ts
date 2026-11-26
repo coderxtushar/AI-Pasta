@@ -9,6 +9,7 @@ import { PROVIDERS } from "@/app/library/providers";
 import { getDecryptedApiKey, isKeyStorageEnabled, KeyDecryptionError } from "@/server/apiKeys";
 import { getOwnedComparison, saveResponse, type ResponseInput } from "@/server/comparisons";
 import { getLanguageModel } from "@/server/llm";
+import { describeProviderError } from "@/server/providerErrors";
 
 // The client opens one request per model, so each model gets its own time budget.
 export const maxDuration = 60;
@@ -97,7 +98,9 @@ export async function POST(req: NextRequest) {
     model: getLanguageModel(model, apiKey),
     prompt,
     maxOutputTokens: MAX_OUTPUT_TOKENS,
-    maxRetries: 0,
+    // Retries 429/5xx/network errors with exponential backoff (2s, 4s). The
+    // abort signal still caps the total time at TIMEOUT_MS.
+    maxRetries: 2,
     abortSignal,
     // Errors are forwarded to the client below; don't log prompts to the server console.
     onError: () => {},
@@ -151,7 +154,7 @@ export async function POST(req: NextRequest) {
               break;
             }
             case "error":
-              fail(errorMessage(part.error));
+              fail(describeProviderError(part.error, model.provider, model.id, apiKey));
               break;
             case "abort":
               onAbort();
@@ -160,7 +163,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (e) {
         if (abortSignal.aborted) onAbort();
-        else fail(errorMessage(e));
+        else fail(describeProviderError(e, model.provider, model.id, apiKey));
       } finally {
         fail("Stream ended without a result.");
         if (comparisonId && outcome) {
