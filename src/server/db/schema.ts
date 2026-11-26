@@ -9,6 +9,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
+import type { ProviderId } from "@/app/library/providers";
 
 // ---- Auth.js tables (shape required by @auth/drizzle-adapter) ----
 
@@ -68,6 +69,27 @@ export const comparisons = pgTable(
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("comparison_user_created_idx").on(t.userId, t.createdAt)]
+);
+
+// Provider API keys, encrypted with AES-256-GCM (see src/server/crypto.ts).
+// The plaintext key is never stored and never sent back to the browser.
+export const apiKeys = pgTable(
+  "api_key",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").$type<ProviderId>().notNull(),
+    ciphertext: text("ciphertext").notNull(),
+    iv: text("iv").notNull(),
+    authTag: text("authTag").notNull(),
+    keyId: text("keyId").notNull(),
+    /** Last 4 characters, shown as a hint ("••••abcd"). */
+    last4: text("last4").notNull(),
+    createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.provider] })]
 );
 
 export type ResponseStatus = "done" | "error" | "stopped";
