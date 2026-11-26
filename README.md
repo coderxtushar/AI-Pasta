@@ -2,8 +2,9 @@
 
 Compare answers from several AI models side by side. Type one prompt, pick models
 (OpenAI, Anthropic, Gemini, DeepSeek, Groq, Qwen), and watch each answer stream in
-with its latency, token count and cost. Signed-in users get a saved history and can
-share any comparison with a public link.
+with its latency, token count and cost. Signed-in users get a saved history, can
+share any comparison with a public link, and can store their API keys encrypted in
+their account.
 
 Built with Next.js 15, the Vercel AI SDK, Auth.js (Google sign-in), Drizzle ORM and Postgres.
 
@@ -59,8 +60,41 @@ Account features turn on when `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID` an
 
 6. `npm run dev`. A **Sign in with Google** button appears in the header.
 
+7. **Optional: store keys in accounts.** Set `KEYS_ENCRYPTION_KEY` to 32 random bytes:
+
+   ```bash
+   openssl rand -base64 32
+   ```
+
+   Signed-in users then save provider keys to their account instead of the browser
+   (see [API key storage](#api-key-storage)).
+
 When running `npm start` or self-hosting outside Vercel, also set
 `AUTH_TRUST_HOST=true` (or `AUTH_URL` to your public URL).
+
+## API key storage
+
+AI Pasta never pays for model calls. Every request uses the user's own provider key.
+
+| Who | Where keys live | How they reach the provider |
+| --- | --- | --- |
+| Signed out, or `KEYS_ENCRYPTION_KEY` unset | Browser localStorage | Sent with each request for that provider only |
+| Signed in, `KEYS_ENCRYPTION_KEY` set | `api_key` table, encrypted | Server decrypts the key for the request; the browser never receives it |
+
+How account keys are protected:
+
+- **AES-256-GCM** with a random IV per key. Tampered ciphertext fails to decrypt
+  instead of producing garbage.
+- **Bound to the owner.** The user ID and provider are authenticated data, so a row
+  copied to another account or provider can't be decrypted.
+- **Write-only from the browser.** The API accepts a key and returns only its last
+  4 characters. Keys are never logged or sent back.
+- When a signed-in user still has keys in their browser, the app offers to move them
+  into the account and then deletes the browser copy.
+
+**Back up `KEYS_ENCRYPTION_KEY`.** If it's lost or changed, saved keys can't be
+decrypted. Users see "save it again" and must re-enter their keys. Each row records
+which key encrypted it (`keyId`), so a rotation script can re-encrypt old rows later.
 
 ## Scripts
 
@@ -82,12 +116,15 @@ src/
     components/Compare.tsx   Compare UI: streams one request per model
     api/generate/            Streams one model's answer (NDJSON), saves it if signed in
     api/comparisons/         Creates a history entry
+    api/keys/                Save, list (hints only) and remove account keys
     history/                 Saved comparisons: search, re-run, delete
     c/[id]/                  One comparison; public when shared
     library/                 Model registry, pricing, stream format (client-safe)
   server/
     llm.ts                   Provider setup for the AI SDK
-    comparisons.ts           Database queries
+    comparisons.ts           History queries
+    apiKeys.ts               Saved key storage (encrypt on write, decrypt per request)
+    crypto.ts                AES-256-GCM helpers
     db/                      Drizzle schema and client
   auth.ts                    Auth.js config
 drizzle/                     SQL migrations
