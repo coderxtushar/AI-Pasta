@@ -1,12 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { isAuthConfigured } from "@/auth";
-import type { ProviderId } from "@/app/library/providers";
+import type { ProviderId, SavedKeyInfo } from "@/app/library/providers";
 import { db } from "./db";
 import { apiKeys } from "./db/schema";
 import { decryptSecret, encryptSecret, isEncryptionConfigured } from "./crypto";
-
-/** What the browser may see about a saved key. */
-export type SavedKeyInfo = { provider: ProviderId; last4: string; updatedAt: string };
 
 /** Account key storage needs both accounts and an encryption key. */
 export function isKeyStorageEnabled(): boolean {

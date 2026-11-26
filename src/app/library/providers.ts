@@ -17,3 +17,6 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
 export const PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[];
 
 export type ApiKeys = Partial<Record<ProviderId, string>>;
+
+/** What the browser may see about a key saved to the user's account. */
+export type SavedKeyInfo = { provider: ProviderId; last4: string; updatedAt: string };

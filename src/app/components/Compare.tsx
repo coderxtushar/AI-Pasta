@@ -3,9 +3,11 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Model, { type RunState } from "./Model";
 import ApiManager from "./ApiManager";
+import AccountKeyManager from "./AccountKeyManager";
 import { MODELS, findModel } from "../library/models";
-import { PROVIDERS, type ApiKeys } from "../library/providers";
-import { hasAnyKey, loadKeys } from "../library/keys";
+import { PROVIDERS, PROVIDER_IDS, type ApiKeys, type ProviderId, type SavedKeyInfo } from "../library/providers";
+import { clearKeys, hasAnyKey, loadKeys } from "../library/keys";
+import { saveKeyToAccount, upsertKey } from "../library/accountKeys";
 import { readNdjson, type StreamEvent } from "../library/stream";
 
 type Props = {
@@ -13,12 +15,17 @@ type Props = {
   signedIn: boolean;
   /** False when auth isn't configured; hides the "sign in to save" hint. */
   authEnabled: boolean;
+  /**
+   * Keys saved to the signed-in account (hints only). Null means keys live in
+   * this browser instead (signed out, or account key storage not configured).
+   */
+  accountKeys: SavedKeyInfo[] | null;
   /** Pre-fill from an earlier comparison (re-run). */
   initialPrompt?: string;
   initialModels?: string[];
 };
 
-export default function Compare({ signedIn, authEnabled, initialPrompt, initialModels }: Props) {
+export default function Compare({ signedIn, authEnabled, accountKeys, initialPrompt, initialModels }: Props) {
   const [prompt, setPrompt] = useState(initialPrompt ?? "");
   const [selectedModels, setSelectedModels] = useState<string[]>(
     initialModels?.length ? initialModels : MODELS.map((m) => m.id)
@@ -28,8 +35,18 @@ export default function Compare({ signedIn, authEnabled, initialPrompt, initialM
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  // Browser-held keys (anonymous mode, or waiting to be moved to the account).
   const [keys, setKeys] = useState<ApiKeys>({});
-  const hasKeys = hasAnyKey(keys);
+  const [savedKeys, setSavedKeys] = useState<SavedKeyInfo[] | null>(accountKeys);
+  const accountMode = savedKeys !== null;
+  const [migration, setMigration] = useState<{ busy: boolean; error?: string; dismissed?: boolean }>({
+    busy: false,
+  });
+
+  const hasProviderKey = (provider: ProviderId) =>
+    accountMode ? savedKeys.some((k) => k.provider === provider) : Boolean(keys[provider]);
+  const hasKeys = accountMode ? savedKeys.length > 0 : hasAnyKey(keys);
+  const showMigration = accountMode && hasAnyKey(keys) && !migration.dismissed;
   const loading = runOrder.some((id) => runs[id]?.status === "streaming");
 
   const abortRef = useRef<AbortController | null>(null);
@@ -56,12 +73,14 @@ export default function Compare({ signedIn, authEnabled, initialPrompt, initialM
   ) {
     const model = findModel(modelId);
     if (!model) return;
-    const apiKey = keys[model.provider];
-    if (!apiKey) {
+    if (!hasProviderKey(model.provider)) {
       const label = PROVIDERS[model.provider].label;
-      update(runId, modelId, (p) => ({ ...p, status: "error", error: `No ${label} API key saved.` }));
+      const error = accountMode ? `No ${label} key saved to your account.` : `No ${label} API key saved.`;
+      update(runId, modelId, (p) => ({ ...p, status: "error", error }));
       return;
     }
+    // In account mode the server looks up the saved key; the browser never has it.
+    const apiKey = accountMode ? undefined : keys[model.provider];
 
     try {
       const res = await fetch("/api/generate", {
@@ -140,7 +159,7 @@ export default function Compare({ signedIn, authEnabled, initialPrompt, initialM
     // Only models we can actually call get stored with the comparison.
     const callable = ids.filter((id) => {
       const model = findModel(id);
-      return model && keys[model.provider];
+      return model && hasProviderKey(model.provider);
     });
     if (callable.length === 0) return null;
     try {
@@ -166,9 +185,73 @@ export default function Compare({ signedIn, authEnabled, initialPrompt, initialM
     abortRef.current?.abort();
   }
 
+  /** Moves keys held in this browser into the account, then clears them locally. */
+  async function moveBrowserKeys() {
+    if (!savedKeys) return;
+    setMigration({ busy: true });
+    let next = savedKeys;
+    const failed: string[] = [];
+    for (const provider of PROVIDER_IDS) {
+      const value = keys[provider];
+      if (!value) continue;
+      try {
+        next = upsertKey(next, await saveKeyToAccount(provider, value));
+      } catch (err) {
+        failed.push(`${PROVIDERS[provider].label} (${err instanceof Error ? err.message : "failed"})`);
+      }
+    }
+    setSavedKeys(next);
+    if (failed.length) {
+      setMigration({ busy: false, error: `Couldn't move: ${failed.join(", ")}. Browser keys were kept.` });
+      return;
+    }
+    clearKeys();
+    setKeys({});
+    setMigration({ busy: false });
+  }
+
   return (
     <div style={{ padding: 20, maxWidth: 1100, margin: "0 auto" }}>
       <h1 style={{ marginBottom: 12 }}>Compare Models</h1>
+
+      {showMigration && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            borderRadius: 8,
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            fontSize: 14,
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ flex: 1, minWidth: 240 }}>
+            This browser has API keys saved locally. Move them to your account so they&apos;re encrypted and work on
+            any device?
+            {migration.error && <span style={{ display: "block", color: "#b91c1c" }}>{migration.error}</span>}
+          </span>
+          <button
+            type="button"
+            onClick={moveBrowserKeys}
+            disabled={migration.busy}
+            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer" }}
+          >
+            {migration.busy ? "Moving…" : "Move to account"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMigration({ busy: false, dismissed: true })}
+            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer" }}
+          >
+            Not now
+          </button>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
         <div style={{ flex: 2 }}>
@@ -316,7 +399,11 @@ export default function Compare({ signedIn, authEnabled, initialPrompt, initialM
               background: "#fff",
             }}
           >
-            <ApiManager onChange={setKeys} />
+            {accountMode ? (
+              <AccountKeyManager keys={savedKeys} onChange={setSavedKeys} />
+            ) : (
+              <ApiManager onChange={setKeys} />
+            )}
           </div>
         </div>
       </div>
