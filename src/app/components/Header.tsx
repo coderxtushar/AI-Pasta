@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth, isAuthConfigured } from "@/auth";
+import { getSessionSafe, isAuthConfigured } from "@/auth";
 import { signInAction, signOutAction } from "../actions";
 
 const buttonStyle: React.CSSProperties = {
@@ -13,7 +13,7 @@ const buttonStyle: React.CSSProperties = {
 
 export default async function Header() {
   const configured = isAuthConfigured();
-  const session = configured ? await auth() : null;
+  const session = await getSessionSafe();
 
   return (
     <header

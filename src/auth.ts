@@ -34,9 +34,22 @@ export function isAuthConfigured(): boolean {
   );
 }
 
-/** The signed-in user's ID, or null when signed out or auth isn't configured. */
-export async function currentUserId(): Promise<string | null> {
+/**
+ * The current session, or null when signed out, auth isn't configured, or the
+ * session lookup fails (e.g. database down) so comparing still works.
+ */
+export async function getSessionSafe() {
   if (!isAuthConfigured()) return null;
-  const session = await auth();
+  try {
+    return await auth();
+  } catch (e) {
+    console.error("Session lookup failed:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** The signed-in user's ID, or null (see getSessionSafe). */
+export async function currentUserId(): Promise<string | null> {
+  const session = await getSessionSafe();
   return session?.user?.id ?? null;
 }

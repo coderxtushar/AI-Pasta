@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { streamText } from "ai";
 import { z } from "zod";
+import { currentUserId } from "@/auth";
+import { MAX_PROMPT_CHARS } from "@/app/library/limits";
 import { estimateCostUsd, findModel } from "@/app/library/models";
 import type { GenerateMetrics, StreamEvent } from "@/app/library/stream";
+import { getOwnedComparison, saveResponse, type ResponseInput } from "@/server/comparisons";
 import { getLanguageModel } from "@/server/llm";
 
 // The client opens one request per model, so each model gets its own time budget.
 export const maxDuration = 60;
 
 const TIMEOUT_MS = 55_000;
-const MAX_PROMPT_CHARS = 20_000;
 // Reasoning models spend part of this budget thinking, so keep it generous.
 const MAX_OUTPUT_TOKENS = 4096;
 
@@ -25,6 +27,8 @@ const RequestSchema = z.object({
     .string({ required_error: "`apiKey` is required." })
     .trim()
     .min(1, "`apiKey` must not be empty."),
+  /** When set, the final response is saved to this comparison (owner only). */
+  comparisonId: z.string().optional(),
 });
 
 function errorMessage(e: unknown): string {
@@ -47,8 +51,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { prompt, apiKey } = parsed.data;
+  const { prompt, apiKey, comparisonId } = parsed.data;
   const model = findModel(parsed.data.model)!;
+
+  // Only the owner can save into a comparison, and only for its prompt and models.
+  if (comparisonId) {
+    const userId = await currentUserId();
+    const comparison = userId ? await getOwnedComparison(userId, comparisonId) : null;
+    if (!comparison || !comparison.models.includes(model.id)) {
+      return NextResponse.json({ error: "Comparison not found." }, { status: 404 });
+    }
+    if (comparison.prompt !== prompt) {
+      return NextResponse.json({ error: "Prompt does not match the comparison." }, { status: 400 });
+    }
+  }
 
   const startedAt = performance.now();
   const elapsed = () => Math.round(performance.now() - startedAt);
@@ -77,51 +93,61 @@ export async function POST(req: NextRequest) {
         }
       };
 
+      let text = "";
       let ttftMs: number | null = null;
-      let finished = false;
+      let outcome: ResponseInput | null = null;
       const baseMetrics = (): GenerateMetrics => ({ ttftMs, totalMs: elapsed() });
-      const fail = (message: string) => {
-        if (finished) return;
-        finished = true;
-        send({ type: "error", message, metrics: baseMetrics() });
+      const fail = (message: string, status: "error" | "stopped" = "error") => {
+        if (outcome) return;
+        const metrics = baseMetrics();
+        outcome = { status, text, error: message, ...metrics };
+        send({ type: "error", message, metrics });
       };
+      const onAbort = () =>
+        timeout.aborted ? fail(`Timed out after ${TIMEOUT_MS / 1000}s.`) : fail("Stopped.", "stopped");
 
       try {
         for await (const part of result.fullStream) {
-          if (finished) break;
+          if (outcome) break;
           switch (part.type) {
             case "text-delta":
               if (ttftMs === null) ttftMs = elapsed();
+              text += part.text;
               send({ type: "delta", text: part.text });
               break;
             case "finish": {
               const { inputTokens, outputTokens, reasoningTokens } = part.totalUsage;
-              finished = true;
-              send({
-                type: "done",
-                metrics: {
-                  ...baseMetrics(),
-                  inputTokens,
-                  outputTokens,
-                  reasoningTokens,
-                  costUsd: estimateCostUsd(model, inputTokens, outputTokens),
-                  finishReason: part.finishReason,
-                },
-              });
+              const metrics: GenerateMetrics = {
+                ...baseMetrics(),
+                inputTokens,
+                outputTokens,
+                reasoningTokens,
+                costUsd: estimateCostUsd(model, inputTokens, outputTokens),
+                finishReason: part.finishReason,
+              };
+              outcome = { status: "done", text, ...metrics };
+              send({ type: "done", metrics });
               break;
             }
             case "error":
               fail(errorMessage(part.error));
               break;
             case "abort":
-              fail(timeout.aborted ? `Timed out after ${TIMEOUT_MS / 1000}s.` : "Stopped.");
+              onAbort();
               break;
           }
         }
       } catch (e) {
-        fail(timeout.aborted ? `Timed out after ${TIMEOUT_MS / 1000}s.` : errorMessage(e));
+        if (abortSignal.aborted) onAbort();
+        else fail(errorMessage(e));
       } finally {
         fail("Stream ended without a result.");
+        if (comparisonId && outcome) {
+          // Runs even if the client pressed Stop, so partial output is kept.
+          await saveResponse(comparisonId, model.id, outcome).catch((e) =>
+            console.error("Saving response failed:", errorMessage(e))
+          );
+        }
         try {
           controller.close();
         } catch {
