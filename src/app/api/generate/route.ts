@@ -5,6 +5,8 @@ import { currentUserId } from "@/auth";
 import { MAX_PROMPT_CHARS } from "@/app/library/limits";
 import { estimateCostUsd, findModel } from "@/app/library/models";
 import type { GenerateMetrics, StreamEvent } from "@/app/library/stream";
+import { PROVIDERS } from "@/app/library/providers";
+import { getDecryptedApiKey, isKeyStorageEnabled, KeyDecryptionError } from "@/server/apiKeys";
 import { getOwnedComparison, saveResponse, type ResponseInput } from "@/server/comparisons";
 import { getLanguageModel } from "@/server/llm";
 
@@ -23,10 +25,8 @@ const RequestSchema = z.object({
   model: z
     .string({ required_error: "`model` is required." })
     .refine((id) => findModel(id) !== undefined, "Unknown model."),
-  apiKey: z
-    .string({ required_error: "`apiKey` is required." })
-    .trim()
-    .min(1, "`apiKey` must not be empty."),
+  /** Browser-held key. Omit it to use the key saved to the signed-in account. */
+  apiKey: z.string().trim().min(1, "`apiKey` must not be empty.").optional(),
   /** When set, the final response is saved to this comparison (owner only). */
   comparisonId: z.string().optional(),
 });
@@ -51,12 +51,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { prompt, apiKey, comparisonId } = parsed.data;
+  const { prompt, comparisonId } = parsed.data;
   const model = findModel(parsed.data.model)!;
+  const needsUser = Boolean(comparisonId) || !parsed.data.apiKey;
+  const userId = needsUser ? await currentUserId() : null;
+
+  let apiKey = parsed.data.apiKey;
+  if (!apiKey) {
+    const label = PROVIDERS[model.provider].label;
+    if (!userId || !isKeyStorageEnabled()) {
+      return NextResponse.json({ error: "`apiKey` is required." }, { status: 400 });
+    }
+    try {
+      apiKey = (await getDecryptedApiKey(userId, model.provider)) ?? undefined;
+    } catch (e) {
+      if (!(e instanceof KeyDecryptionError)) throw e;
+      return NextResponse.json(
+        { error: `Your saved ${label} key can't be read anymore. Please save it again.` },
+        { status: 409 }
+      );
+    }
+    if (!apiKey) {
+      return NextResponse.json({ error: `No ${label} API key saved to your account.` }, { status: 400 });
+    }
+  }
 
   // Only the owner can save into a comparison, and only for its prompt and models.
   if (comparisonId) {
-    const userId = await currentUserId();
     const comparison = userId ? await getOwnedComparison(userId, comparisonId) : null;
     if (!comparison || !comparison.models.includes(model.id)) {
       return NextResponse.json({ error: "Comparison not found." }, { status: 404 });
