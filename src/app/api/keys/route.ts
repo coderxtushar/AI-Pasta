@@ -3,6 +3,7 @@ import { z } from "zod";
 import { currentUserId } from "@/auth";
 import { PROVIDER_IDS, type ProviderId } from "@/app/library/providers";
 import { deleteApiKey, isKeyStorageEnabled, listApiKeys, saveApiKey } from "@/server/apiKeys";
+import { enforceRateLimit } from "@/server/rateLimit";
 
 // Saved keys are write-only from the browser's point of view: these routes
 // accept a key and return only its last 4 characters, never the key itself.
@@ -44,6 +45,8 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const g = await guard();
   if ("response" in g) return g.response;
+  const limited = await enforceRateLimit(req, "keys", g.userId);
+  if (limited) return limited;
   const parsed = SaveSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
@@ -55,6 +58,8 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const g = await guard();
   if ("response" in g) return g.response;
+  const limited = await enforceRateLimit(req, "keys", g.userId);
+  if (limited) return limited;
   const parsed = ProviderSchema.safeParse(req.nextUrl.searchParams.get("provider"));
   if (!parsed.success) return NextResponse.json({ error: "Unknown provider." }, { status: 400 });
   await deleteApiKey(g.userId, parsed.data);

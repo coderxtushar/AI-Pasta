@@ -4,6 +4,7 @@ import { currentUserId } from "@/auth";
 import { findModel } from "@/app/library/models";
 import { MAX_PROMPT_CHARS } from "@/app/library/limits";
 import { createComparison } from "@/server/comparisons";
+import { enforceRateLimit } from "@/server/rateLimit";
 
 const RequestSchema = z.object({
   prompt: z
@@ -20,6 +21,8 @@ const RequestSchema = z.object({
 export async function POST(req: NextRequest) {
   const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: "Sign in to save comparisons." }, { status: 401 });
+  const limited = await enforceRateLimit(req, "comparisons", userId);
+  if (limited) return limited;
 
   const json = await req.json().catch(() => null);
   const parsed = RequestSchema.safeParse(json);

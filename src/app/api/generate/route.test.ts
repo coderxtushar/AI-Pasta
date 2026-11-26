@@ -7,6 +7,7 @@ import { readNdjson, type StreamEvent } from "@/app/library/stream";
 
 vi.mock("@/auth", () => ({ currentUserId: vi.fn() }));
 vi.mock("@/server/llm", () => ({ getLanguageModel: vi.fn() }));
+vi.mock("@/server/rateLimit", () => ({ enforceRateLimit: vi.fn() }));
 vi.mock("@/server/comparisons", () => ({ getOwnedComparison: vi.fn(), saveResponse: vi.fn() }));
 vi.mock("@/server/apiKeys", () => {
   class KeyDecryptionError extends Error {}
@@ -17,6 +18,7 @@ const { currentUserId } = await import("@/auth");
 const { getLanguageModel } = await import("@/server/llm");
 const { getOwnedComparison, saveResponse } = await import("@/server/comparisons");
 const { getDecryptedApiKey, isKeyStorageEnabled, KeyDecryptionError } = await import("@/server/apiKeys");
+const { enforceRateLimit } = await import("@/server/rateLimit");
 const { POST } = await import("./route");
 
 function textModel(parts: string[]) {
@@ -58,9 +60,18 @@ beforeEach(() => {
   vi.mocked(isKeyStorageEnabled).mockReturnValue(true);
   vi.mocked(getLanguageModel).mockReturnValue(textModel(["Hel", "lo"]));
   vi.mocked(saveResponse).mockResolvedValue(undefined);
+  vi.mocked(enforceRateLimit).mockResolvedValue(null);
 });
 
 describe("POST /api/generate: validation", () => {
+  it("stops rate-limited callers before doing any work", async () => {
+    const { NextResponse } = await import("next/server");
+    vi.mocked(enforceRateLimit).mockResolvedValue(NextResponse.json({ error: "Too many requests." }, { status: 429 }));
+    const res = await POST(post(base));
+    expect(res.status).toBe(429);
+    expect(getLanguageModel).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["not json", "Request body must be JSON."],
     [{ ...base, prompt: "   " }, "`prompt` must not be empty."],

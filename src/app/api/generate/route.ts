@@ -10,6 +10,7 @@ import { getDecryptedApiKey, isKeyStorageEnabled, KeyDecryptionError } from "@/s
 import { getOwnedComparison, saveResponse, type ResponseInput } from "@/server/comparisons";
 import { getLanguageModel } from "@/server/llm";
 import { describeProviderError } from "@/server/providerErrors";
+import { enforceRateLimit } from "@/server/rateLimit";
 
 // The client opens one request per model, so each model gets its own time budget.
 export const maxDuration = 60;
@@ -37,6 +38,10 @@ function errorMessage(e: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
+  // Keyed by IP: checking the session first would add a DB query to every call.
+  const limited = await enforceRateLimit(req, "generate");
+  if (limited) return limited;
+
   let json: unknown;
   try {
     json = await req.json();
