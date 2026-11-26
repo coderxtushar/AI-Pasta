@@ -2,12 +2,18 @@
 import React, { useEffect, useState } from "react";
 import Model from "../components/Model";
 import ApiManager from "../components/ApiManager";
-import { MODELS } from "../library/models";
+import { MODELS, findModel } from "../library/models";
+import type { ApiKeys } from "../library/providers";
+import { hasAnyKey, loadKeys } from "../library/keys";
 
 type ResultItem = {
   model: string;
   output?: string;
   error?: string;
+};
+
+type CompareResponse = {
+  results?: { model: string; text?: string; error?: string }[];
 };
 
 export default function Page() {
@@ -16,11 +22,11 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ResultItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [hasKeys, setHasKeys] = useState(false);
+  const [keys, setKeys] = useState<ApiKeys>({});
+  const hasKeys = hasAnyKey(keys);
 
   useEffect(() => {
-    const saved = localStorage.getItem("apiKeys");
-    setHasKeys(!!saved);
+    setKeys(loadKeys());
   }, []);
 
   function toggleModel(id: string) {
@@ -32,17 +38,8 @@ export default function Page() {
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
     setError(null);
-    const raw = localStorage.getItem("apiKeys");
-    if (!raw) {
+    if (!hasKeys) {
       setError("API keys missing — open the API Keys panel on the right and save keys.");
-      setHasKeys(false);
-      return;
-    }
-    let keys;
-    try {
-      keys = JSON.parse(raw);
-    } catch {
-      setError("Saved API keys are invalid JSON.");
       return;
     }
 
@@ -61,19 +58,16 @@ export default function Page() {
         throw new Error(`Server ${res.status}: ${txt || res.statusText}`);
       }
 
-      const data = await res.json();
-      // route returns karega { results: [...] } with items { model, text?, error? }
-      const parsed: ResultItem[] = Array.isArray(data?.results)
-        ? data.results.map((r: any) => ({
-            model: r.model,
-            output: r.text ?? (r.output as string) ?? undefined,
-            error: r.error ?? undefined,
-          }))
-        : [];
+      const data: CompareResponse = await res.json();
+      const parsed: ResultItem[] = (data.results ?? []).map((r) => ({
+        model: r.model,
+        output: r.text,
+        error: r.error,
+      }));
 
       setResults(parsed);
-    } catch (err: any) {
-      setError(err?.message ?? "Unknown error");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -181,7 +175,7 @@ export default function Page() {
             <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
               {results.map((r) => (
                 <div key={r.model}>
-                  <Model model={r.model} output={r.error ? `Error: ${r.error}` : r.output ?? ""} />
+                  <Model model={findModel(r.model)?.label ?? r.model} output={r.error ? `Error: ${r.error}` : r.output ?? ""} />
                 </div>
               ))}
             </div>
@@ -198,10 +192,7 @@ export default function Page() {
               background: "#fff",
             }}
           >
-            <ApiManager />
-            <div style={{ marginTop: 12, fontSize: 13, color: "#374151" }}>
-              Saved keys will be read from localStorage key "apiKeys" and sent to /api/compare.
-            </div>
+            <ApiManager onChange={setKeys} />
           </div>
         </div>
       </div>
