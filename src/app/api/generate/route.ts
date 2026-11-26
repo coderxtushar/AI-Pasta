@@ -10,6 +10,7 @@ import { getDecryptedApiKey, isKeyStorageEnabled, KeyDecryptionError } from "@/s
 import { getOwnedComparison, saveResponse, type ResponseInput } from "@/server/comparisons";
 import { getLanguageModel } from "@/server/llm";
 import { describeProviderError } from "@/server/providerErrors";
+import { safeErrorMessage } from "@/app/library/redact";
 import { enforceRateLimit } from "@/server/rateLimit";
 
 // The client opens one request per model, so each model gets its own time budget.
@@ -33,8 +34,33 @@ const RequestSchema = z.object({
   comparisonId: z.string().optional(),
 });
 
-function errorMessage(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+/**
+ * One JSON line per model call, for log search and dashboards (e.g. Vercel logs).
+ * Deliberately excludes the prompt, the output, the API key and the user.
+ */
+function logGeneration(
+  provider: string,
+  model: string,
+  keySource: "browser" | "account",
+  saved: boolean,
+  o: ResponseInput
+) {
+  console.log(
+    JSON.stringify({
+      event: "generate",
+      provider,
+      model,
+      keySource,
+      saved,
+      status: o.status,
+      ttftMs: o.ttftMs,
+      totalMs: o.totalMs,
+      inputTokens: o.inputTokens,
+      outputTokens: o.outputTokens,
+      costUsd: o.costUsd,
+      error: o.status === "error" ? o.error : undefined,
+    })
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -63,6 +89,7 @@ export async function POST(req: NextRequest) {
   const userId = needsUser ? await currentUserId() : null;
 
   let apiKey = parsed.data.apiKey;
+  const keySource = apiKey ? "browser" : "account";
   if (!apiKey) {
     const label = PROVIDERS[model.provider].label;
     if (!userId || !isKeyStorageEnabled()) {
@@ -174,9 +201,10 @@ export async function POST(req: NextRequest) {
         if (comparisonId && outcome) {
           // Runs even if the client pressed Stop, so partial output is kept.
           await saveResponse(comparisonId, model.id, outcome).catch((e) =>
-            console.error("Saving response failed:", errorMessage(e))
+            console.error("Saving response failed:", safeErrorMessage(e))
           );
         }
+        if (outcome) logGeneration(model.provider, model.id, keySource, Boolean(comparisonId), outcome);
         try {
           controller.close();
         } catch {

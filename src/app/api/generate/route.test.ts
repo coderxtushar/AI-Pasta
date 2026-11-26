@@ -61,6 +61,7 @@ beforeEach(() => {
   vi.mocked(getLanguageModel).mockReturnValue(textModel(["Hel", "lo"]));
   vi.mocked(saveResponse).mockResolvedValue(undefined);
   vi.mocked(enforceRateLimit).mockResolvedValue(null);
+  vi.spyOn(console, "log").mockImplementation(() => {});
 });
 
 describe("POST /api/generate: validation", () => {
@@ -100,6 +101,23 @@ describe("POST /api/generate: streaming", () => {
     expect(done.metrics.ttftMs).toBeGreaterThanOrEqual(0);
     // gpt-5.4-mini: $0.75 in / $4.50 out per 1M tokens.
     expect(done.metrics.costUsd).toBeCloseTo((10 * 0.75 + 20 * 4.5) / 1e6, 10);
+  });
+
+  it("logs one structured line without the prompt, output or key", async () => {
+    await events(await POST(post({ ...base, prompt: "my secret prompt" })));
+    const line = vi.mocked(console.log).mock.calls.map((c) => String(c[0])).find((l) => l.includes('"event":"generate"'));
+    expect(JSON.parse(line!)).toMatchObject({
+      event: "generate",
+      provider: "openai",
+      model: "gpt-5.4-mini",
+      keySource: "browser",
+      status: "done",
+      inputTokens: 10,
+      outputTokens: 20,
+    });
+    expect(line).not.toContain("my secret prompt");
+    expect(line).not.toContain("Hello");
+    expect(line).not.toContain("sk-browser");
   });
 
   it("uses the browser key when one is sent", async () => {

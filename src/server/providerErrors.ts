@@ -1,17 +1,8 @@
 import { APICallError, RetryError } from "ai";
 import { PROVIDERS, type ProviderId } from "@/app/library/providers";
+import { redactSecrets } from "@/app/library/redact";
 
-// Common API key shapes (OpenAI/Anthropic/DeepSeek/Qwen "sk-…", Groq "gsk_…",
-// Google "AIza…"). Providers sometimes echo part of the key in error messages.
-const KEY_PATTERNS = [/\bsk-[A-Za-z0-9_\-*.]{3,}/g, /\bgsk_[A-Za-z0-9_\-*.]{3,}/g, /\bAIza[A-Za-z0-9_\-*.]{3,}/g];
-
-/** Removes the request's key and anything key-shaped from a message. */
-export function redactSecrets(message: string, apiKey?: string): string {
-  let out = message;
-  if (apiKey && apiKey.length >= 4) out = out.split(apiKey).join("[redacted]");
-  for (const pattern of KEY_PATTERNS) out = out.replace(pattern, "[redacted]");
-  return out;
-}
+export { redactSecrets };
 
 function detail(message: string, apiKey?: string): string {
   const clean = redactSecrets(message, apiKey).replace(/\s+/g, " ").trim();
