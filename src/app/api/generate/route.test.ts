@@ -1,0 +1,183 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { simulateReadableStream } from "ai";
+import { MockLanguageModelV2 } from "ai/test";
+import type { LanguageModelV2StreamPart } from "@ai-sdk/provider";
+import { NextRequest } from "next/server";
+import { readNdjson, type StreamEvent } from "@/app/library/stream";
+
+vi.mock("@/auth", () => ({ currentUserId: vi.fn() }));
+vi.mock("@/server/llm", () => ({ getLanguageModel: vi.fn() }));
+vi.mock("@/server/comparisons", () => ({ getOwnedComparison: vi.fn(), saveResponse: vi.fn() }));
+vi.mock("@/server/apiKeys", () => {
+  class KeyDecryptionError extends Error {}
+  return { getDecryptedApiKey: vi.fn(), isKeyStorageEnabled: vi.fn(), KeyDecryptionError };
+});
+
+const { currentUserId } = await import("@/auth");
+const { getLanguageModel } = await import("@/server/llm");
+const { getOwnedComparison, saveResponse } = await import("@/server/comparisons");
+const { getDecryptedApiKey, isKeyStorageEnabled, KeyDecryptionError } = await import("@/server/apiKeys");
+const { POST } = await import("./route");
+
+function textModel(parts: string[]) {
+  const chunks: LanguageModelV2StreamPart[] = [
+    { type: "text-start", id: "t" },
+    ...parts.map((delta): LanguageModelV2StreamPart => ({ type: "text-delta", id: "t", delta })),
+    { type: "text-end", id: "t" },
+    { type: "finish", finishReason: "stop", usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 } },
+  ];
+  return new MockLanguageModelV2({ doStream: async () => ({ stream: simulateReadableStream({ chunks }) }) });
+}
+
+function failingModel(error: Error) {
+  return new MockLanguageModelV2({
+    doStream: async () => {
+      throw error;
+    },
+  });
+}
+
+function post(body: unknown) {
+  return new NextRequest("http://localhost/api/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
+}
+
+async function events(res: Response) {
+  const out: StreamEvent[] = [];
+  for await (const e of readNdjson<StreamEvent>(res.body!)) out.push(e);
+  return out;
+}
+
+const base = { prompt: "hi", model: "gpt-5.4-mini", apiKey: "sk-browser" };
+
+beforeEach(() => {
+  vi.mocked(currentUserId).mockResolvedValue(null);
+  vi.mocked(isKeyStorageEnabled).mockReturnValue(true);
+  vi.mocked(getLanguageModel).mockReturnValue(textModel(["Hel", "lo"]));
+  vi.mocked(saveResponse).mockResolvedValue(undefined);
+});
+
+describe("POST /api/generate: validation", () => {
+  it.each([
+    ["not json", "Request body must be JSON."],
+    [{ ...base, prompt: "   " }, "`prompt` must not be empty."],
+    [{ ...base, model: "nope" }, "Unknown model."],
+    [{ ...base, prompt: "x".repeat(20_001) }, "at most 20000"],
+  ])("rejects %j", async (body, message) => {
+    const res = await POST(post(body));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain(message);
+  });
+});
+
+describe("POST /api/generate: streaming", () => {
+  it("streams deltas, then usage, latency and cost", async () => {
+    const res = await POST(post(base));
+    expect(res.headers.get("content-type")).toContain("application/x-ndjson");
+    const out = await events(res);
+    expect(out.filter((e) => e.type === "delta").map((e) => (e.type === "delta" ? e.text : ""))).toEqual([
+      "Hel",
+      "lo",
+    ]);
+    const done = out.at(-1);
+    expect(done?.type).toBe("done");
+    if (done?.type !== "done") return;
+    expect(done.metrics).toMatchObject({ inputTokens: 10, outputTokens: 20, finishReason: "stop" });
+    expect(done.metrics.ttftMs).toBeGreaterThanOrEqual(0);
+    // gpt-5.4-mini: $0.75 in / $4.50 out per 1M tokens.
+    expect(done.metrics.costUsd).toBeCloseTo((10 * 0.75 + 20 * 4.5) / 1e6, 10);
+  });
+
+  it("uses the browser key when one is sent", async () => {
+    await events(await POST(post(base)));
+    expect(getLanguageModel).toHaveBeenCalledWith(expect.objectContaining({ id: "gpt-5.4-mini" }), "sk-browser");
+    expect(getDecryptedApiKey).not.toHaveBeenCalled();
+  });
+
+  it("turns a provider failure into an error event", async () => {
+    vi.mocked(getLanguageModel).mockReturnValue(failingModel(new Error("boom")));
+    const out = await events(await POST(post(base)));
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ type: "error" });
+  });
+});
+
+describe("POST /api/generate: account keys", () => {
+  const noKey = { prompt: "hi", model: "gpt-5.4-mini" };
+
+  it("requires a key when signed out", async () => {
+    const res = await POST(post(noKey));
+    expect(res.status).toBe(400);
+  });
+
+  it("uses the decrypted account key when signed in", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getDecryptedApiKey).mockResolvedValue("sk-account");
+    await events(await POST(post(noKey)));
+    expect(getDecryptedApiKey).toHaveBeenCalledWith("u1", "openai");
+    expect(getLanguageModel).toHaveBeenCalledWith(expect.anything(), "sk-account");
+  });
+
+  it("explains when no key is saved", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getDecryptedApiKey).mockResolvedValue(null);
+    const res = await POST(post(noKey));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("No OpenAI API key saved to your account.");
+  });
+
+  it("asks the user to re-save a key that can't be decrypted", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getDecryptedApiKey).mockRejectedValue(new KeyDecryptionError("bad"));
+    const res = await POST(post(noKey));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("save it again");
+  });
+});
+
+describe("POST /api/generate: saving to history", () => {
+  const comparison = {
+    id: "c1",
+    userId: "u1",
+    prompt: "hi",
+    models: ["gpt-5.4-mini"],
+    isPublic: false,
+    createdAt: new Date(),
+  };
+
+  it("refuses a comparison the user doesn't own", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u2");
+    vi.mocked(getOwnedComparison).mockResolvedValue(null);
+    const res = await POST(post({ ...base, comparisonId: "c1" }));
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses a prompt that differs from the comparison", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getOwnedComparison).mockResolvedValue(comparison);
+    const res = await POST(post({ ...base, prompt: "other", comparisonId: "c1" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("saves the finished response", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getOwnedComparison).mockResolvedValue(comparison);
+    await events(await POST(post({ ...base, comparisonId: "c1" })));
+    expect(saveResponse).toHaveBeenCalledWith(
+      "c1",
+      "gpt-5.4-mini",
+      expect.objectContaining({ status: "done", text: "Hello", inputTokens: 10, outputTokens: 20 })
+    );
+  });
+
+  it("saves failures too", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getOwnedComparison).mockResolvedValue(comparison);
+    vi.mocked(getLanguageModel).mockReturnValue(failingModel(new Error("boom")));
+    await events(await POST(post({ ...base, comparisonId: "c1" })));
+    expect(saveResponse).toHaveBeenCalledWith("c1", "gpt-5.4-mini", expect.objectContaining({ status: "error" }));
+  });
+});

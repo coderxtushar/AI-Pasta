@@ -14,7 +14,7 @@ export async function createComparison(userId: string, prompt: string, models: s
 }
 
 /** Returns the comparison only if `userId` owns it. */
-export async function getOwnedComparison(userId: string, id: string) {
+export async function getOwnedComparison(userId: string, id: string): Promise<Comparison | null> {
   const [row] = await db
     .select()
     .from(comparisons)
