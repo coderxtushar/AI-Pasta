@@ -12,7 +12,8 @@
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "keys:rotate": "tsx scripts/rotate-keys.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.117",

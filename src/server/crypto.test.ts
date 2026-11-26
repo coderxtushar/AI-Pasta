@@ -43,6 +43,18 @@ describe("crypto", () => {
     expect(() => decryptSecret(sealed, "ctx")).toThrow(/different key/);
   });
 
+  it("still decrypts old secrets with KEYS_ENCRYPTION_KEY_PREVIOUS during a rotation", () => {
+    const oldKey = process.env.KEYS_ENCRYPTION_KEY!;
+    const sealed = encryptSecret("sk-secret", "ctx");
+    vi.stubEnv("KEYS_ENCRYPTION_KEY", newKey());
+    vi.stubEnv("KEYS_ENCRYPTION_KEY_PREVIOUS", oldKey);
+    expect(decryptSecret(sealed, "ctx")).toBe("sk-secret");
+    // New secrets use the new key.
+    const fresh = encryptSecret("sk-new", "ctx");
+    expect(fresh.keyId).not.toBe(sealed.keyId);
+    expect(decryptSecret(fresh, "ctx")).toBe("sk-new");
+  });
+
   it("treats a missing or wrong-length key as not configured", () => {
     vi.stubEnv("KEYS_ENCRYPTION_KEY", "");
     expect(isEncryptionConfigured()).toBe(false);

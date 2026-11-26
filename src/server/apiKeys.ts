@@ -4,15 +4,14 @@ import type { ProviderId, SavedKeyInfo } from "@/app/library/providers";
 import { db } from "./db";
 import { apiKeys } from "./db/schema";
 import { decryptSecret, encryptSecret, isEncryptionConfigured } from "./crypto";
+import { apiKeyContext } from "./apiKeyContext";
 
 /** Account key storage needs both accounts and an encryption key. */
 export function isKeyStorageEnabled(): boolean {
   return isAuthConfigured() && isEncryptionConfigured();
 }
 
-// Binds each ciphertext to its owner and provider: a row copied to another
-// user or provider fails to decrypt.
-const context = (userId: string, provider: ProviderId) => `api_key:${userId}:${provider}`;
+const context = apiKeyContext;
 
 export async function saveApiKey(
   userId: string,

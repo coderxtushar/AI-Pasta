@@ -13,29 +13,38 @@ export type SealedSecret = {
   keyId: string;
 };
 
-let warned = false;
+const warned = new Set<string>();
 
-function getMasterKey(): Buffer | null {
-  const raw = process.env.KEYS_ENCRYPTION_KEY;
+function readKey(envName: "KEYS_ENCRYPTION_KEY" | "KEYS_ENCRYPTION_KEY_PREVIOUS"): Buffer | null {
+  const raw = process.env[envName];
   if (!raw) return null;
   const key = Buffer.from(raw, "base64");
   if (key.length !== 32) {
-    if (!warned) {
-      console.error("KEYS_ENCRYPTION_KEY must be 32 bytes, base64-encoded. Account key storage is disabled.");
-      warned = true;
+    if (!warned.has(envName)) {
+      console.error(`${envName} must be 32 bytes, base64-encoded. It is being ignored.`);
+      warned.add(envName);
     }
     return null;
   }
   return key;
 }
 
-function fingerprint(key: Buffer): string {
+/** The key new secrets are encrypted with. */
+const currentKey = () => readKey("KEYS_ENCRYPTION_KEY");
+
+export function fingerprint(key: Buffer): string {
   return createHash("sha256").update(key).digest("hex").slice(0, 16);
 }
 
 /** True when a valid KEYS_ENCRYPTION_KEY is configured. */
 export function isEncryptionConfigured(): boolean {
-  return getMasterKey() !== null;
+  return currentKey() !== null;
+}
+
+/** Fingerprint of the current key, or null when none is configured. */
+export function currentKeyId(): string | null {
+  const key = currentKey();
+  return key ? fingerprint(key) : null;
 }
 
 /**
@@ -43,7 +52,7 @@ export function isEncryptionConfigured(): boolean {
  * the ciphertext only decrypts with the same context (e.g. the same user + provider).
  */
 export function encryptSecret(plaintext: string, context: string): SealedSecret {
-  const key = getMasterKey();
+  const key = currentKey();
   if (!key) throw new Error("Encryption key is not configured.");
   const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv(ALGORITHM, key, iv);
@@ -57,12 +66,15 @@ export function encryptSecret(plaintext: string, context: string): SealedSecret 
   };
 }
 
+/**
+ * Decrypts with whichever configured key matches `sealed.keyId`: the current
+ * key, or KEYS_ENCRYPTION_KEY_PREVIOUS during a rotation.
+ */
 export function decryptSecret(sealed: SealedSecret, context: string): string {
-  const key = getMasterKey();
-  if (!key) throw new Error("Encryption key is not configured.");
-  if (sealed.keyId !== fingerprint(key)) {
-    throw new Error("Secret was encrypted with a different key.");
-  }
+  const key = [currentKey(), readKey("KEYS_ENCRYPTION_KEY_PREVIOUS")].find(
+    (k): k is Buffer => k !== null && fingerprint(k) === sealed.keyId
+  );
+  if (!key) throw new Error("Secret was encrypted with a different key.");
   const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(sealed.iv, "base64"));
   decipher.setAAD(Buffer.from(context, "utf8"));
   decipher.setAuthTag(Buffer.from(sealed.authTag, "base64"));
