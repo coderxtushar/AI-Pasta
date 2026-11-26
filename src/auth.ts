@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
@@ -43,6 +44,8 @@ export async function getSessionSafe() {
   try {
     return await auth();
   } catch (e) {
+    // Let Next.js's internal control-flow errors (dynamic rendering, redirects) through.
+    unstable_rethrow(e);
     console.error("Session lookup failed:", e instanceof Error ? e.message : e);
     return null;
   }
