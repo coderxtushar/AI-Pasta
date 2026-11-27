@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Schibsted_Grotesk } from "next/font/google";
+import { Host_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import { ThemeProvider } from "@/components/site/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
-// Interface and display face: a crisp grotesk with firm figures.
-const sans = Schibsted_Grotesk({
+// Interface and display face: a sharp, slightly geometric grotesk for a developer tool.
+const sans = Host_Grotesk({
   variable: "--font-face-sans",
   subsets: ["latin"],
 });

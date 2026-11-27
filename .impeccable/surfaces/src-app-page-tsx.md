@@ -32,7 +32,7 @@ refuses spectacle in place of proof: no abstract hero art, no logo wall, no inve
 
 OWN-WORLD: Near-black ground with faint cool-grey surfaces stepping up in luminance, 1px
 white-alpha borders, one warm accent used sparingly for the live/primary signal, a calm
-categorical colour per model, Schibsted Grotesk and JetBrains Mono (mono only for metrics and code),
+categorical colour per model, Host Grotesk and JetBrains Mono (mono only for metrics and code),
 keycap chips for shortcuts, soft offset shadows under raised windows, light theme available.
 
 STORY: Visitors see the six-panel window answering at once, read that keys stay theirs and

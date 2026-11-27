@@ -254,7 +254,7 @@ export default async function Landing({ searchParams }: Props) {
           }}
         />
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="motion-rise text-4xl font-semibold tracking-[-0.035em] text-balance sm:text-6xl">
+          <h1 className="motion-rise text-4xl font-semibold tracking-[-0.025em] text-balance sm:text-6xl">
             <span className="sm:block">Same prompt. Every model.</span> <span className="sm:block">Real numbers.</span>
           </h1>
           <p style={{ "--d": "90ms" } as React.CSSProperties} className="motion-rise mx-auto mt-5 max-w-2xl text-base leading-relaxed text-balance text-muted-foreground sm:text-lg">

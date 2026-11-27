@@ -27,35 +27,35 @@ colors:
   model-6: "oklch(0.85 0.12 95)"
 typography:
   display:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Host Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "3.75rem"
     fontWeight: 600
     lineHeight: 1
-    letterSpacing: "-0.035em"
+    letterSpacing: "-0.025em"
   headline:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Host Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.875rem"
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "-0.025em"
   title:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Host Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 600
     lineHeight: 1.25
     letterSpacing: "-0.025em"
   body:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Host Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.65
   answer:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Host Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 400
     lineHeight: 1.65
   label:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Host Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "13px"
     fontWeight: 500
     lineHeight: 1.4
@@ -193,16 +193,16 @@ its dot turns grey until the vote, because colour would give the model away.
 
 ## Typography
 
-**Display and UI font:** Schibsted Grotesk (with ui-sans-serif, system-ui)
+**Display and UI font:** Host Grotesk (with ui-sans-serif, system-ui)
 **Mono font:** JetBrains Mono (with ui-monospace)
 
-**Character:** one crisp, slightly condensed grotesk for everything people read, firm
-enough to carry the display headline and quiet at 13px; mono only for code, metrics
-and keycaps, where alignment and measurement matter. JetBrains Mono's dotted zero keeps
-figures like $0.0031 unambiguous.
+**Character:** one sharp, slightly geometric grotesk for everything people read, with
+distinctive g and y shapes that make it read as a developer tool without turning cold;
+mono only for code, metrics and keycaps, where alignment and measurement matter.
+JetBrains Mono's dotted zero keeps figures like $0.0031 unambiguous.
 
 ### Hierarchy
-- **Display** (600, 60px desktop / 36px mobile, line-height 1, -0.035em): the landing
+- **Display** (600, 60px desktop / 36px mobile, line-height 1, -0.025em): the landing
   headline only.
 - **Headline** (600, 30px, -0.025em): landing section titles.
 - **Title** (600, 24px): page titles (History, Leaderboard, Batch run, Comparison).
