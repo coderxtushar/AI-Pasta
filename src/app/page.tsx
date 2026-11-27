@@ -259,7 +259,7 @@ export default async function Landing({ searchParams }: Props) {
             <Button asChild size="lg" className="h-11 px-5 text-[15px]">
               <Link href="/app">
                 Start comparing
-                <Kbd className="bg-primary-foreground/10 text-primary-foreground">↵</Kbd>
+                <Kbd className="bg-primary-foreground/10 text-primary-foreground pointer-coarse:hidden">↵</Kbd>
               </Link>
             </Button>
             <Button asChild size="lg" variant="ghost" className="h-11 px-4 text-[15px] text-muted-foreground">

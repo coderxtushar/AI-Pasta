@@ -164,6 +164,7 @@ export function DemoReplay({ run }: { run: DemoRun }) {
           <Model
             key={a.modelId}
             variant="column"
+            compact
             className="h-[280px] snap-start sm:h-[230px] lg:h-[200px]"
             label={findModel(a.modelId)?.label ?? a.modelId}
             color={modelColor(a.modelId)}

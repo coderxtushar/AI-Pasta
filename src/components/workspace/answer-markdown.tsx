@@ -6,9 +6,9 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { CodeBlock } from "./code-block";
 
-type Props = { text: string; streaming: boolean; className?: string };
+type Props = { text: string; streaming: boolean; className?: string; /** Tighter code blocks for previews. */ compact?: boolean };
 
-function makeComponents(streaming: boolean): Components {
+function makeComponents(streaming: boolean, compact = false): Components {
   return {
     a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener" />,
     pre: ({ children }) => <>{children}</>,
@@ -17,7 +17,7 @@ function makeComponents(streaming: boolean): Components {
       const text = String(children ?? "");
       // Block code has a language class or spans lines; everything else is inline.
       if (match || text.includes("\n")) {
-        return <CodeBlock code={text.replace(/\n$/, "")} lang={match?.[1]} highlight={!streaming} />;
+        return <CodeBlock code={text.replace(/\n$/, "")} lang={match?.[1]} highlight={!streaming} compact={compact} />;
       }
       return (
         <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]" {...props}>
@@ -35,16 +35,23 @@ function makeComponents(streaming: boolean): Components {
 
 const streamingComponents = makeComponents(true);
 const finishedComponents = makeComponents(false);
+const compactStreaming = makeComponents(true, true);
+const compactFinished = makeComponents(false, true);
 
 /**
  * An answer rendered as Markdown (no raw HTML; links open in a new tab).
  * While tokens stream, rendering is deferred so typing and other panels stay smooth.
  */
-export const AnswerMarkdown = memo(function AnswerMarkdown({ text, streaming, className }: Props) {
+export const AnswerMarkdown = memo(function AnswerMarkdown({ text, streaming, className, compact = false }: Props) {
   const deferred = useDeferredValue(text);
   return (
     <div className={cn("answer-prose", streaming && "streaming-caret", className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={streaming ? streamingComponents : finishedComponents}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={
+          compact ? (streaming ? compactStreaming : compactFinished) : streaming ? streamingComponents : finishedComponents
+        }
+      >
         {deferred}
       </ReactMarkdown>
     </div>

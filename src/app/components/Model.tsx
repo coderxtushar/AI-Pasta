@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AnswerMarkdown } from "@/components/workspace/answer-markdown";
 import type { GenerateMetrics } from "../library/stream";
 import type { RunState } from "../library/generateClient";
-import { formatMetrics } from "../library/format";
+import { formatMetrics, formatMetricsCompact } from "../library/format";
 
 export type { RunState };
 
@@ -35,6 +35,8 @@ type ModelProps = {
   currentPrompt?: string;
   /** "column": fixed-height scrolling body for the workspace grid; "card": natural height. */
   variant?: "column" | "card";
+  /** Tight preview (landing replay): bare code blocks and a one-line metrics footer. */
+  compact?: boolean;
   className?: string;
 };
 
@@ -111,6 +113,7 @@ const Model: React.FC<ModelProps> = ({
   earlierTurns = [],
   currentPrompt,
   variant = "card",
+  compact = false,
   className,
 }) => {
   const status =
@@ -171,7 +174,7 @@ const Model: React.FC<ModelProps> = ({
             <Skeleton className="h-3 w-2/3" />
           </div>
         )}
-        {state.text && <AnswerMarkdown text={state.text} streaming={streaming} />}
+        {state.text && <AnswerMarkdown text={state.text} streaming={streaming} compact={compact} />}
 
         {state.status === "error" && state.error && (
           <div className="mt-2 flex gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -183,8 +186,14 @@ const Model: React.FC<ModelProps> = ({
       </div>
 
       {!anonymous && state.metrics && (
-        <footer className="border-t bg-subtle px-3.5 py-2">
-          {state.metrics && <MetricsLine metrics={state.metrics} />}
+        <footer className={cn("border-t bg-subtle px-3.5", compact ? "py-1.5" : "py-2")}>
+          {compact ? (
+            <p className="truncate font-mono text-[11.5px] leading-5 text-muted-foreground tabular" title={formatMetrics(state.metrics)}>
+              {formatMetricsCompact(state.metrics)}
+            </p>
+          ) : (
+            <MetricsLine metrics={state.metrics} />
+          )}
           <Notes notes={state.metrics?.notes} />
         </footer>
       )}
