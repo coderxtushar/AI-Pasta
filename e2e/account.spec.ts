@@ -106,12 +106,12 @@ test("replacing and removing the saved key", async ({ page, context }) => {
   await signIn(context, E2E.ownerToken);
   const responses = watchResponses(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Replace" }).click();
+  await page.getByRole("button", { name: "Replace Qwen key" }).click();
   await page.getByLabel("Qwen key").fill("sk-e2e-replaced-9876");
   await page.getByLabel("Qwen key").press("Enter");
   await expect(page.getByText("••••9876")).toBeVisible();
 
-  await page.getByRole("button", { name: "Remove" }).click();
+  await page.getByRole("button", { name: "Remove Qwen key" }).click();
   await expect(page.getByText("Qwen key removed.")).toBeVisible();
   await page.locator("#prompt").fill("hi");
   await expect(page.getByRole("button", { name: "Submit" })).toBeDisabled();

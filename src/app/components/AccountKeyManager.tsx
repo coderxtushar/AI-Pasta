@@ -113,6 +113,7 @@ export default function AccountKeyManager({ keys, onChange }: Props) {
                   <button
                     type="button"
                     onClick={() => setEditing((e) => ({ ...e, [id]: true }))}
+                    aria-label={`Replace ${PROVIDERS[id].label} key`}
                     className="bg-gray-200 text-gray-800"
                     style={smallButton}
                   >
@@ -122,6 +123,7 @@ export default function AccountKeyManager({ keys, onChange }: Props) {
                     type="button"
                     disabled={busy === id}
                     onClick={() => remove(id)}
+                    aria-label={`Remove ${PROVIDERS[id].label} key`}
                     className="bg-gray-200"
                     style={{ ...smallButton, color: "#b91c1c" }}
                   >

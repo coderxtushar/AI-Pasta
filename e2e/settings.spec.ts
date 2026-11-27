@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E } from "./env";
-import { modelCard, saveBrowserKey, signIn } from "./helpers";
+import { modelCard, saveAccountKey, saveBrowserKey, signIn } from "./helpers";
 
 async function openSettings(page: Page) {
   await page.getByRole("button", { name: /Generation settings/ }).click();
@@ -53,9 +53,7 @@ test("settings are remembered in this browser", async ({ page }) => {
 test("saved comparisons show their settings, and re-run restores them", async ({ page, context }) => {
   await signIn(context, E2E.ownerToken);
   await page.goto("/");
-  await page.getByLabel("Qwen key").fill("sk-e2e-settings-key");
-  await page.getByLabel("Qwen key").press("Enter");
-  await expect(page.getByText("Qwen key saved.")).toBeVisible();
+  await saveAccountKey(page, "Qwen", "sk-e2e-settings-key");
 
   await fillSettings(page);
   await page.locator("#prompt").fill("echo-settings");

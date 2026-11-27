@@ -30,9 +30,14 @@ export default async function Header() {
         AI Pasta
       </Link>
       {session?.user && (
-        <Link href="/history" style={{ fontSize: 14, color: "#2563eb" }}>
-          History
-        </Link>
+        <>
+          <Link href="/history" style={{ fontSize: 14, color: "#2563eb" }}>
+            History
+          </Link>
+          <Link href="/leaderboard" style={{ fontSize: 14, color: "#2563eb" }}>
+            Leaderboard
+          </Link>
+        </>
       )}
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
         {session?.user ? (

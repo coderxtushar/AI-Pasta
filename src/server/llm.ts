@@ -22,7 +22,8 @@ export function getLanguageModel(model: ModelInfo, apiKey: string): LanguageMode
     case "google":
       return createGoogleGenerativeAI({ apiKey })(model.id);
     case "deepseek":
-      return createDeepSeek({ apiKey })(model.id);
+      // DEEPSEEK_BASE_URL is optional (a proxy, or the mock in end-to-end tests).
+      return createDeepSeek({ apiKey, baseURL: process.env.DEEPSEEK_BASE_URL || undefined })(model.id);
     case "groq":
       return createGroq({ apiKey })(model.id);
     case "qwen":

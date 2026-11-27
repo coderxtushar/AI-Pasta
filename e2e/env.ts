@@ -7,7 +7,7 @@ export const E2E = {
   otherToken: "e2e-other-session-token",
 };
 
-/** Env for the app under test: accounts on, Qwen pointed at the mock provider. */
+/** Env for the app under test: accounts on, Qwen and DeepSeek pointed at the mock provider. */
 export const appEnv = {
   DATABASE_URL: E2E.databaseUrl,
   AUTH_SECRET: "e2e-auth-secret-not-for-production-0123456789",
@@ -16,6 +16,7 @@ export const appEnv = {
   AUTH_GOOGLE_SECRET: "e2e-google-client-secret",
   KEYS_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
   QWEN_BASE_URL: `http://localhost:${E2E.mockPort}`,
+  DEEPSEEK_BASE_URL: `http://localhost:${E2E.mockPort}`,
   // Never talk to real Sentry or Upstash from tests.
   SENTRY_DSN: "",
   UPSTASH_REDIS_REST_URL: "",

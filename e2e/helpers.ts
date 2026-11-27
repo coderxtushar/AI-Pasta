@@ -35,3 +35,12 @@ export function watchResponses(page: Page) {
       expect(bodies.filter((b) => b.includes(secret)), `"${secret}" appeared in a response`).toHaveLength(0),
   };
 }
+
+/** Saves a key to the signed-in account, replacing one that's already there. */
+export async function saveAccountKey(page: Page, provider: string, key: string) {
+  const replace = page.getByRole("button", { name: `Replace ${provider} key` });
+  if (await replace.isVisible()) await replace.click();
+  await page.getByLabel(`${provider} key`).fill(key);
+  await page.getByLabel(`${provider} key`).press("Enter");
+  await expect(page.getByText(`${provider} key saved.`)).toBeVisible();
+}
