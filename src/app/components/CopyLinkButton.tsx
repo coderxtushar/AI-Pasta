@@ -1,9 +1,11 @@
 "use client";
 import React, { useState } from "react";
+import { Check, Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-type Props = { path: string; style?: React.CSSProperties };
+type Props = { path: string };
 
-export default function CopyLinkButton({ path, style }: Props) {
+export default function CopyLinkButton({ path }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -17,8 +19,9 @@ export default function CopyLinkButton({ path, style }: Props) {
   }
 
   return (
-    <button type="button" onClick={copy} style={style}>
+    <Button type="button" variant="ghost" size="sm" onClick={copy}>
+      {copied ? <Check className="size-3.5 text-success" /> : <Link2 className="size-3.5" />}
       {copied ? "Copied!" : "Copy link"}
-    </button>
+    </Button>
   );
 }

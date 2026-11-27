@@ -12,6 +12,11 @@ import { userTurns } from "../../library/conversation";
 import { verdictLine, verdictSummary } from "../../library/judge";
 import { cleanSettings, describeSettings, type ComparisonSettings } from "../../library/settings";
 import { deleteComparisonAction, setShareAction } from "../../actions";
+import { modelColor } from "../../library/modelColors";
+import { Download, Globe, Lock, RotateCcw, Scale, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PageHeader, PageShell } from "@/components/site/page-header";
+import { CopyButton } from "@/components/workspace/copy-button";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -47,14 +52,6 @@ function toRunState(r: SavedResponse): RunState {
   };
 }
 
-const button: React.CSSProperties = {
-  padding: "6px 12px",
-  borderRadius: 8,
-  border: "1px solid #d1d5db",
-  background: "#fff",
-  cursor: "pointer",
-  fontSize: 14,
-};
 
 /** What the models were run with: shared settings, per-model overrides, and the system prompt(s). */
 function SettingsSummary({ settings }: { settings: ComparisonSettings | null }) {
@@ -70,19 +67,21 @@ function SettingsSummary({ settings }: { settings: ComparisonSettings | null }) 
   ];
 
   return (
-    <div style={{ marginTop: 8, fontSize: 13, color: "#374151" }} aria-label="Generation settings">
+    <div aria-label="Generation settings" className="space-y-1 text-[13px] text-muted-foreground">
       <div>
-        <strong>Settings:</strong> {describeSettings(all) || "provider defaults"}
+        <span className="font-medium text-foreground">Settings:</span> {describeSettings(all) || "provider defaults"}
       </div>
       {overrides.map(([id, s]) => (
         <div key={id}>
-          <strong>{findModel(id)?.label ?? id}:</strong> {describeSettings(s)}
+          <span className="font-medium text-foreground">{findModel(id)?.label ?? id}:</span> {describeSettings(s)}
         </div>
       ))}
       {systemPrompts.map(([who, text]) => (
-        <details key={who} style={{ marginTop: 4 }}>
-          <summary style={{ cursor: "pointer" }}>System prompt ({who})</summary>
-          <pre style={{ whiteSpace: "pre-wrap", margin: "4px 0 0", fontFamily: "inherit" }}>{text}</pre>
+        <details key={who} className="group">
+          <summary className="cursor-pointer select-none hover:text-foreground">System prompt ({who})</summary>
+          <pre className="mt-1 rounded-md bg-muted px-3 py-2 font-sans text-[13px] whitespace-pre-wrap text-foreground">
+            {text}
+          </pre>
         </details>
       ))}
     </div>
@@ -103,119 +102,119 @@ export default async function ComparisonPage({ params }: Props) {
   };
 
   return (
-    <main style={{ padding: 20, maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-        <h1 style={{ margin: 0, marginRight: "auto" }}>{isOwner ? "Comparison" : "Shared comparison"}</h1>
-
-        <Link href={`/app?from=${comparison.id}`} style={{ ...button, color: "#111827" }}>
-          {isOwner ? "Re-run" : "Try this prompt"}
-        </Link>
-        <a href={`/api/comparisons/${comparison.id}/csv`} download style={{ ...button, color: "#111827" }}>
-          Export CSV
-        </a>
-
+    <PageShell wide>
+      <PageHeader
+        title={isOwner ? "Comparison" : "Shared comparison"}
+        description={
+          isOwner
+            ? comparison.isPublic
+              ? "Anyone with the link can view this comparison. Your API keys and account details are never shown."
+              : "Only you can see this comparison."
+            : "Answers saved from a real run. Try the same prompt with your own keys."
+        }
+      >
+        <Button asChild variant={isOwner ? "secondary" : "default"} size="sm">
+          <Link href={`/app?from=${comparison.id}`}>
+            <RotateCcw className="size-3.5" />
+            {isOwner ? "Re-run" : "Try this prompt"}
+          </Link>
+        </Button>
+        <Button asChild variant="ghost" size="sm">
+          <a href={`/api/comparisons/${comparison.id}/csv`} download>
+            <Download className="size-3.5" /> Export CSV
+          </a>
+        </Button>
         {isOwner && (
           <>
-            {comparison.isPublic && <CopyLinkButton path={`/c/${comparison.id}`} style={button} />}
+            {comparison.isPublic && <CopyLinkButton path={`/c/${comparison.id}`} />}
             <form action={setShareAction}>
               <input type="hidden" name="id" value={comparison.id} />
               <input type="hidden" name="isPublic" value={comparison.isPublic ? "false" : "true"} />
-              <button type="submit" style={button}>
+              <Button type="submit" variant="ghost" size="sm">
+                {comparison.isPublic ? <Lock className="size-3.5" /> : <Globe className="size-3.5" />}
                 {comparison.isPublic ? "Make private" : "Share publicly"}
-              </button>
+              </Button>
             </form>
             <form action={deleteComparisonAction}>
               <input type="hidden" name="id" value={comparison.id} />
               <input type="hidden" name="redirectTo" value="/history" />
-              <button type="submit" style={{ ...button, color: "#b91c1c" }}>
-                Delete
-              </button>
+              <Button type="submit" variant="ghost" size="sm" className="text-danger hover:text-danger">
+                <Trash2 className="size-3.5" /> Delete
+              </Button>
             </form>
           </>
         )}
-      </div>
+      </PageHeader>
 
-      {isOwner && (
-        <p style={{ fontSize: 13, color: "#6b7280", marginTop: 0 }}>
-          {comparison.isPublic
-            ? "Anyone with the link can view this comparison. Your API keys and account details are never shown."
-            : "Only you can see this comparison."}
-        </p>
-      )}
-
-      <section
-        style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, background: "#fafafa", marginBottom: 16 }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>
-          Prompt
-          {turns.length > 1 && (
-            <span style={{ fontWeight: 400, color: "#6b7280" }}> · conversation of {turns.length} turns</span>
+      <section aria-label="Prompt" className="mb-4 rounded-xl border bg-card p-4">
+        <div className="mb-2 flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Prompt</span>
+          {turns.length > 1 && <span> · conversation of {turns.length} turns</span>}
+          <time dateTime={comparison.createdAt.toISOString()} className="ml-auto tabular">
+            {comparison.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+          </time>
+        </div>
+        <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{comparison.prompt}</p>
+        <div className="mt-3 space-y-1 border-t pt-3">
+          <SettingsSummary settings={comparison.settings} />
+          {comparison.blind && (
+            <p className="text-[13px] text-muted-foreground">
+              <span className="font-medium text-foreground">Blind comparison:</span>{" "}
+              {!vote
+                ? "no vote was cast."
+                : vote.winnerModelId === null
+                  ? `${isOwner ? "you" : "the author"} called it a tie.`
+                  : `${isOwner ? "you" : "the author"} picked ${findModel(vote.winnerModelId)?.label ?? vote.winnerModelId} without seeing names.`}
+            </p>
           )}
         </div>
-        <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontFamily: "inherit" }}>{comparison.prompt}</pre>
-        <time
-          dateTime={comparison.createdAt.toISOString()}
-          style={{ display: "block", marginTop: 8, fontSize: 12, color: "#6b7280" }}
-        >
-          {comparison.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
-        </time>
-        <SettingsSummary settings={comparison.settings} />
-        {comparison.blind && (
-          <div style={{ marginTop: 6, fontSize: 13, color: "#374151" }}>
-            <strong>Blind comparison:</strong>{" "}
-            {!vote
-              ? "no vote was cast."
-              : vote.winnerModelId === null
-                ? `${isOwner ? "you" : "the author"} called it a tie.`
-                : `${isOwner ? "you" : "the author"} picked ${findModel(vote.winnerModelId)?.label ?? vote.winnerModelId} without seeing names.`}
-          </div>
-        )}
       </section>
 
       {verdicts.length > 0 && (
-        <section
-          aria-label="AI judges"
-          style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, background: "#fafafa", marginBottom: 16 }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>AI judges</div>
+        <section aria-label="AI judges" className="mb-4 rounded-xl border bg-card p-4">
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+            <Scale className="size-4 text-muted-foreground" aria-hidden /> AI judges
+          </h2>
           {verdicts.map((v) => {
             const s = verdictSummary(v, nameOf);
             return (
-              <div key={v.judgeModelId} style={{ fontSize: 14, marginTop: 4 }}>
-                <strong>{s.judge}</strong> {s.pick}. {s.summary}
-              </div>
+              <p key={v.judgeModelId} className="mt-1 text-sm">
+                <strong className="font-semibold">{s.judge}</strong> {s.pick}. {s.summary}
+              </p>
             );
           })}
         </section>
       )}
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
         {comparison.models.map((modelId) => {
           const last = turns.length - 1;
           return (
             <Model
               key={modelId}
               label={findModel(modelId)?.label ?? modelId}
+              color={modelColor(modelId)}
               state={stateAt(modelId, last)}
               earlierTurns={turns.slice(0, last).map((prompt, t) => ({ prompt, state: stateAt(modelId, t) }))}
               currentPrompt={turns[last]}
               badge={vote?.winnerModelId === modelId ? "Blind pick" : undefined}
+              actions={stateAt(modelId, last).text ? <CopyButton text={stateAt(modelId, last).text} label="Copy answer" /> : null}
               footer={verdicts.map((v) => {
                 const line = verdictLine(v, modelId, nameOf);
                 return line ? (
-                  <div key={v.judgeModelId} style={{ marginTop: 6, fontSize: 13, color: "#374151" }}>
-                    <strong>
+                  <p key={v.judgeModelId} className="mt-3 border-t pt-2 text-[13px] text-muted-foreground">
+                    <strong className="font-medium text-foreground">
                       Judge ({findModel(v.judgeModelId)?.label ?? v.judgeModelId}
                       {turns.length > 1 ? ", first answer" : ""}):
                     </strong>{" "}
                     {line}
-                  </div>
+                  </p>
                 ) : null;
               })}
             />
           );
         })}
       </div>
-    </main>
+    </PageShell>
   );
 }
