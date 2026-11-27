@@ -1,0 +1,58 @@
+{
+  "source": "illustrative",
+  "recordedAt": null,
+  "prompt": "Write a Postgres query that returns each customer's three most recent orders, with a one-line explanation.",
+  "answers": [
+    {
+      "modelId": "gpt-5.4-mini",
+      "text": "```sql\nSELECT customer_id, id, created_at\nFROM (\n  SELECT o.*,\n         ROW_NUMBER() OVER (\n           PARTITION BY customer_id\n           ORDER BY created_at DESC\n         ) AS rn\n  FROM orders o\n) ranked\nWHERE rn <= 3\nORDER BY customer_id, created_at DESC;\n```\n\nRanks each customer's orders by date with `ROW_NUMBER()` and keeps the top three.",
+      "ttftMs": 640,
+      "totalMs": 2860,
+      "inputTokens": 38,
+      "outputTokens": 186,
+      "costUsd": 0.0008655
+    },
+    {
+      "modelId": "claude-sonnet-5-5",
+      "text": "```sql\nSELECT c.id AS customer_id, o.id AS order_id, o.created_at\nFROM customers c\nCROSS JOIN LATERAL (\n  SELECT id, created_at\n  FROM orders\n  WHERE orders.customer_id = c.id\n  ORDER BY created_at DESC\n  LIMIT 3\n) o\nORDER BY c.id, o.created_at DESC;\n```\n\nA `LATERAL` subquery fetches the latest three orders per customer, which stays fast with an index on `(customer_id, created_at DESC)`.",
+      "ttftMs": 910,
+      "totalMs": 3940,
+      "inputTokens": 41,
+      "outputTokens": 214,
+      "costUsd": 0.002222
+    },
+    {
+      "modelId": "gemini-flash-latest",
+      "text": "```sql\nWITH ranked AS (\n  SELECT *,\n    RANK() OVER (PARTITION BY customer_id ORDER BY created_at DESC) AS r\n  FROM orders\n)\nSELECT * FROM ranked WHERE r <= 3;\n```\n\nUses a window function to number orders per customer, newest first. Note: `RANK()` can return more than three rows when timestamps tie; use `ROW_NUMBER()` for exactly three.",
+      "ttftMs": 380,
+      "totalMs": 1720,
+      "inputTokens": 39,
+      "outputTokens": 152
+    },
+    {
+      "modelId": "deepseek-chat",
+      "text": "```sql\nSELECT *\nFROM (\n  SELECT o.*,\n    ROW_NUMBER() OVER (PARTITION BY o.customer_id ORDER BY o.created_at DESC) AS rn\n  FROM orders AS o\n) t\nWHERE t.rn <= 3;\n```\n\nPartition by customer, order by `created_at` descending, keep rows 1 to 3.",
+      "ttftMs": 1150,
+      "totalMs": 4480,
+      "inputTokens": 36,
+      "outputTokens": 131
+    },
+    {
+      "modelId": "openai/gpt-oss-120b",
+      "text": "```sql\nSELECT customer_id, id AS order_id, created_at\nFROM (\n  SELECT customer_id, id, created_at,\n         ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at DESC, id DESC) AS rn\n  FROM orders\n) x\nWHERE rn <= 3;\n```\n\nThe extra `id DESC` makes the order deterministic when two orders share a timestamp.",
+      "ttftMs": 210,
+      "totalMs": 980,
+      "inputTokens": 52,
+      "outputTokens": 238,
+      "costUsd": 0.0001506
+    },
+    {
+      "modelId": "qwen-plus",
+      "text": "```sql\nSELECT o.customer_id, o.id, o.created_at\nFROM orders o\nWHERE (\n  SELECT COUNT(*)\n  FROM orders o2\n  WHERE o2.customer_id = o.customer_id\n    AND o2.created_at > o.created_at\n) < 3\nORDER BY o.customer_id, o.created_at DESC;\n```\n\nKeeps an order when fewer than three newer orders exist for the same customer. Simple, but slower than a window function on large tables.",
+      "ttftMs": 720,
+      "totalMs": 3210,
+      "inputTokens": 40,
+      "outputTokens": 177
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AnswerMarkdown } from "@/components/workspace/answer-markdown";
 import type { GenerateMetrics } from "../library/stream";
 import type { RunState } from "../library/generateClient";
+import { formatMetrics } from "../library/format";
 
 export type { RunState };
 
@@ -44,23 +45,6 @@ const STATUS: Record<RunState["status"], { text: string; tone: string }> = {
   stopped: { text: "Stopped", tone: "text-muted-foreground" },
 };
 
-function seconds(ms: number) {
-  return `${(ms / 1000).toFixed(2)}s`;
-}
-
-export function formatMetrics(m: GenerateMetrics): string {
-  const parts: string[] = [];
-  if (m.ttftMs !== null) parts.push(`first token ${seconds(m.ttftMs)}`);
-  parts.push(`total ${seconds(m.totalMs)}`);
-  if (m.inputTokens !== undefined && m.outputTokens !== undefined) {
-    const reasoning = m.reasoningTokens ? `, ${m.reasoningTokens} reasoning` : "";
-    parts.push(`${m.inputTokens} in / ${m.outputTokens} out tokens${reasoning}`);
-  }
-  parts.push(m.costUsd !== undefined ? `$${m.costUsd.toFixed(5)}` : "cost —");
-  if (m.finishReason === "length") parts.push("hit output token limit");
-  return parts.join(" · ");
-}
-
 function UserMessage({ text }: { text: string }) {
   return (
     <div className="my-3 rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap">
@@ -70,7 +54,18 @@ function UserMessage({ text }: { text: string }) {
 }
 
 function MetricsLine({ metrics }: { metrics: GenerateMetrics }) {
-  return <div className="font-mono text-[11.5px] leading-5 text-muted-foreground tabular">{formatMetrics(metrics)}</div>;
+  // Each item stays on one line; the line wraps only between items.
+  const parts = formatMetrics(metrics).split(" · ");
+  return (
+    <div className="font-mono text-[11.5px] leading-5 text-muted-foreground tabular">
+      {parts.map((part, i) => (
+        <span key={i} className="whitespace-nowrap">
+          {part}
+          {i < parts.length - 1 && " · "}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function Notes({ notes }: { notes?: string[] }) {

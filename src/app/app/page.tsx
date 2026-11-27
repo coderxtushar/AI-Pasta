@@ -3,12 +3,13 @@ import { isKeyStorageEnabled, listApiKeys } from "@/server/apiKeys";
 import { getComparisonForViewer } from "@/server/comparisons";
 import Compare from "../components/Compare";
 import { findModel } from "../library/models";
+import { MAX_PROMPT_CHARS } from "../library/limits";
 import { EMPTY_SETTINGS, type ComparisonSettings } from "../library/settings";
 
-type Props = { searchParams: Promise<{ from?: string }> };
+type Props = { searchParams: Promise<{ from?: string; prompt?: string }> };
 
 export default async function Home({ searchParams }: Props) {
-  const { from } = await searchParams;
+  const { from, prompt } = await searchParams;
   const userId = await currentUserId();
 
   // "Re-run" links land here as /app?from=<comparisonId>.
@@ -35,7 +36,7 @@ export default async function Home({ searchParams }: Props) {
       signedIn={userId !== null}
       authEnabled={isAuthConfigured()}
       accountKeys={accountKeys}
-      initialPrompt={initial?.prompt}
+      initialPrompt={initial?.prompt ?? prompt?.slice(0, MAX_PROMPT_CHARS)}
       initialModels={initial?.models}
       initialSettings={initial?.settings}
     />
