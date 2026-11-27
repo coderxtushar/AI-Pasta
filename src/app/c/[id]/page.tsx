@@ -104,6 +104,9 @@ export default async function ComparisonPage({ params }: Props) {
         <Link href={`/?from=${comparison.id}`} style={{ ...button, color: "#111827" }}>
           {isOwner ? "Re-run" : "Try this prompt"}
         </Link>
+        <a href={`/api/comparisons/${comparison.id}/csv`} download style={{ ...button, color: "#111827" }}>
+          Export CSV
+        </a>
 
         {isOwner && (
           <>

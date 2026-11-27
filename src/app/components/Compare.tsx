@@ -10,10 +10,12 @@ import { PROVIDERS, PROVIDER_IDS, type ApiKeys, type ProviderId, type SavedKeyIn
 import { clearKeys, hasAnyKey, loadKeys } from "../library/keys";
 import { saveKeyToAccount, upsertKey } from "../library/accountKeys";
 import SettingsPanel from "./SettingsPanel";
+import { loadStoredSettings, storeSettings } from "../library/settingsStorage";
 import TemplatePicker from "./TemplatePicker";
 import { blindLabel, shuffle } from "../library/blind";
 import JudgePanel from "./JudgePanel";
 import { verdictLine, type JudgeVerdict } from "../library/judge";
+import { RESULT_COLUMNS, downloadCsv, resultRow, toCsv } from "../library/csv";
 import {
   EMPTY_SETTINGS,
   compactSettings,
@@ -21,8 +23,6 @@ import {
   settingsError,
   type ComparisonSettings,
 } from "../library/settings";
-
-const SETTINGS_STORAGE_KEY = "generationSettings";
 
 const voteButton: React.CSSProperties = {
   padding: "6px 12px",
@@ -34,15 +34,6 @@ const voteButton: React.CSSProperties = {
   fontWeight: 600,
 };
 
-function loadStoredSettings(): ComparisonSettings | null {
-  try {
-    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed.all === "object" && typeof parsed.perModel === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
 
 type Props = {
   /** Signed-in users get each run saved to their history. */
@@ -119,11 +110,7 @@ export default function Compare({
 
   function changeSettings(next: ComparisonSettings) {
     setSettings(next);
-    try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Storage can be unavailable (private mode); settings still apply to this session.
-    }
+    storeSettings(next);
   }
 
   const orderedSelection = MODELS.map((m) => m.id).filter((id) => selectedModels.includes(id));
@@ -251,6 +238,21 @@ export default function Compare({
       const message = err instanceof Error ? err.message : "Unknown error";
       setBlindRun({ revealed: true, pick: winner, saveError: `Vote not saved: ${message}` });
     }
+  }
+
+  function exportCsv() {
+    const judgeName = verdict ? findModel(verdict.judgeModelId)?.label ?? verdict.judgeModelId : "";
+    const rows = runOrder.map((id) =>
+      resultRow({
+        prompt: runPrompt,
+        modelId: id,
+        state: runs[id],
+        settings: effectiveSettings(settings, id),
+        judgeScores: verdict?.scores[id] ? [`${judgeName} ${verdict.scores[id].score}/10`] : undefined,
+        blindPick: blindRun?.pick === id,
+      })
+    );
+    downloadCsv(`ai-pasta-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`, toCsv(RESULT_COLUMNS, rows));
   }
 
   const answeredIds = runOrder.filter((id) => runs[id]?.status === "done");
@@ -517,6 +519,16 @@ export default function Compare({
               </div>
             )}
 
+            {/* Not during a blind vote: the file names the models. */}
+            {!loading && runOrder.length > 0 && !hiddenNames && (
+              <button
+                type="button"
+                onClick={exportCsv}
+                style={{ marginTop: 12, padding: "6px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer" }}
+              >
+                Export CSV
+              </button>
+            )}
             {!loading && finishedAnswers.length >= 2 && judgeOptions.length > 0 && (
               <JudgePanel
                 prompt={runPrompt}
