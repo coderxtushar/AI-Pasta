@@ -21,7 +21,20 @@ wouldn't be blind.
 scores every answer 1–10 with reasoning and picks a winner. The judge sees the answers
 shuffled and labelled only by letter, so neither names nor position can sway it. The
 app warns when the judge also wrote one of the answers, since models tend to favour
-their own. Verdicts are saved with signed-in comparisons and shown on their pages. Signed-in users get a saved history, can
+their own. Verdicts are saved with signed-in comparisons and shown on their pages.
+
+**Templates and batch runs**: save prompts as templates (in your account when signed
+in, otherwise in the browser). On the **Batch** page, write a template with an
+`{{input}}` slot and a list of inputs: one per line, or separated by a line containing
+only `---` for multi-line inputs. Each input runs against every selected model. Inputs
+go one at a time with their models in parallel, and rate-limited calls wait and retry.
+Signed-in batches can save each prompt to your history.
+
+**CSV export** is available for batch results, live comparisons and saved comparison
+pages. Columns: prompt, input, model, status, answer, error, latency, tokens, cost,
+notes, settings, judge scores, blind pick. Cells that would start a spreadsheet
+formula (`=`, `+`, `-`, `@`) are prefixed with `'` so opening the file can't run
+anything an answer contains. Signed-in users get a saved history, can
 share any comparison with a public link, and can store their API keys encrypted in
 their account.
 
