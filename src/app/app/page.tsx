@@ -1,9 +1,9 @@
 import { currentUserId, isAuthConfigured } from "@/auth";
 import { isKeyStorageEnabled, listApiKeys } from "@/server/apiKeys";
 import { getComparisonForViewer } from "@/server/comparisons";
-import Compare from "./components/Compare";
-import { findModel } from "./library/models";
-import { EMPTY_SETTINGS, type ComparisonSettings } from "./library/settings";
+import Compare from "../components/Compare";
+import { findModel } from "../library/models";
+import { EMPTY_SETTINGS, type ComparisonSettings } from "../library/settings";
 
 type Props = { searchParams: Promise<{ from?: string }> };
 
@@ -11,7 +11,7 @@ export default async function Home({ searchParams }: Props) {
   const { from } = await searchParams;
   const userId = await currentUserId();
 
-  // "Re-run" links land here as /?from=<comparisonId>.
+  // "Re-run" links land here as /app?from=<comparisonId>.
   let initial: { prompt: string; models: string[]; settings: ComparisonSettings | null } | undefined;
   if (from) {
     const found = await getComparisonForViewer(from, userId).catch(() => null);

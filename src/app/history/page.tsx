@@ -91,7 +91,7 @@ export default async function HistoryPage({ searchParams }: Props) {
                 {c.followUps.length > 0 && (
                   <span style={{ color: "#374151", fontWeight: 600 }}>{c.followUps.length + 1} turns</span>
                 )}
-                <Link href={`/?from=${c.id}`} style={{ color: "#2563eb", marginLeft: "auto" }}>
+                <Link href={`/app?from=${c.id}`} style={{ color: "#2563eb", marginLeft: "auto" }}>
                   Re-run
                 </Link>
                 <form action={deleteComparisonAction}>

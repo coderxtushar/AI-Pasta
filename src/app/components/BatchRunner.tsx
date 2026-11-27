@@ -210,7 +210,7 @@ export default function BatchRunner({ signedIn, accountKeys }: Props) {
 
       {modelsWithKeys.length === 0 && (
         <div role="status" style={{ padding: 10, borderRadius: 8, background: "#fff7ed", fontSize: 14, marginBottom: 12 }}>
-          No API keys found. Add them on the <Link href="/" style={{ color: "#2563eb" }}>Compare</Link> page first.
+          No API keys found. Add them on the <Link href="/app" style={{ color: "#2563eb" }}>Compare</Link> page first.
         </div>
       )}
 

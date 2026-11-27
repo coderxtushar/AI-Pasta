@@ -107,7 +107,7 @@ export default async function ComparisonPage({ params }: Props) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
         <h1 style={{ margin: 0, marginRight: "auto" }}>{isOwner ? "Comparison" : "Shared comparison"}</h1>
 
-        <Link href={`/?from=${comparison.id}`} style={{ ...button, color: "#111827" }}>
+        <Link href={`/app?from=${comparison.id}`} style={{ ...button, color: "#111827" }}>
           {isOwner ? "Re-run" : "Try this prompt"}
         </Link>
         <a href={`/api/comparisons/${comparison.id}/csv`} download style={{ ...button, color: "#111827" }}>
