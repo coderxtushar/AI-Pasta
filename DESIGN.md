@@ -27,40 +27,40 @@ colors:
   model-6: "oklch(0.85 0.12 95)"
 typography:
   display:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "3.75rem"
     fontWeight: 600
     lineHeight: 1
     letterSpacing: "-0.035em"
   headline:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.875rem"
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "-0.025em"
   title:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 600
     lineHeight: 1.25
     letterSpacing: "-0.025em"
   body:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.65
   answer:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 400
     lineHeight: 1.65
   label:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "13px"
     fontWeight: 500
     lineHeight: 1.4
   metric:
-    fontFamily: "Geist Mono, ui-monospace, monospace"
+    fontFamily: "JetBrains Mono, ui-monospace, monospace"
     fontSize: "12px"
     fontWeight: 400
     lineHeight: 1.75
@@ -147,7 +147,7 @@ Dark is the default.
 - Near-black cool ground, three surface steps, 1px white-alpha hairlines
 - Light-on-dark primary buttons; keyboard hints as keycaps
 - One colour per model, the same on every surface
-- Metrics in Geist Mono with tabular figures, beside every answer
+- Metrics in JetBrains Mono with tabular figures, beside every answer
 - One warm accent, reserved for live and attention signals
 - Motion that eases out (expo) from a visible end state: one authored entrance, the rest feedback
 
@@ -193,11 +193,13 @@ its dot turns grey until the vote, because colour would give the model away.
 
 ## Typography
 
-**Display and UI font:** Geist (with ui-sans-serif, system-ui)
-**Mono font:** Geist Mono (with ui-monospace)
+**Display and UI font:** Schibsted Grotesk (with ui-sans-serif, system-ui)
+**Mono font:** JetBrains Mono (with ui-monospace)
 
-**Character:** one neutral, engineered grotesque for everything people read; mono only
-for code, metrics and keycaps, where alignment and measurement matter.
+**Character:** one crisp, slightly condensed grotesk for everything people read, firm
+enough to carry the display headline and quiet at 13px; mono only for code, metrics
+and keycaps, where alignment and measurement matter. JetBrains Mono's dotted zero keeps
+figures like $0.0031 unambiguous.
 
 ### Hierarchy
 - **Display** (600, 60px desktop / 36px mobile, line-height 1, -0.035em): the landing
@@ -205,14 +207,14 @@ for code, metrics and keycaps, where alignment and measurement matter.
 - **Headline** (600, 30px, -0.025em): landing section titles.
 - **Title** (600, 24px): page titles (History, Leaderboard, Batch run, Comparison).
 - **Body** (400, 15px, 1.65): landing copy and descriptions, kept to about 65ch.
-- **Answer** (400, 14px, 1.65): model answers rendered as Markdown, with code in Geist
+- **Answer** (400, 14px, 1.65): model answers rendered as Markdown, with code in JetBrains
   Mono at 13px.
 - **Label** (500, 13px): chips, card titles, form labels.
-- **Metric** (Geist Mono, 12px, tabular figures): every latency, token and cost
+- **Metric** (JetBrains Mono, 12px, tabular figures): every latency, token and cost
   readout.
 
 ### Named Rules
-**The Numbers-Up Rule.** Measurements are always set in Geist Mono with tabular figures
+**The Numbers-Up Rule.** Measurements are always set in JetBrains Mono with tabular figures
 and shown beside the answer they measure. Unknown values print as "—", never as a guess.
 
 ## Layout
@@ -317,7 +319,7 @@ compact card variant: code blocks without a header bar and a one-line metric foo
 ## Do's and Don'ts
 
 ### Do:
-- **Do** show latency, tokens and cost beside every answer, in Geist Mono with tabular
+- **Do** show latency, tokens and cost beside every answer, in JetBrains Mono with tabular
   figures.
 - **Do** keep each model's hue identical on every surface, and grey while blind.
 - **Do** reserve tangerine for live and attention signals.

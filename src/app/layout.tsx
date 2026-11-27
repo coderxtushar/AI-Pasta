@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { JetBrains_Mono, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import { ThemeProvider } from "@/components/site/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Interface and display face: a crisp grotesk with firm figures.
+const sans = Schibsted_Grotesk({
+  variable: "--font-face-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Metrics and code: dotted zero and tabular digits keep numbers easy to scan.
+const mono = JetBrains_Mono({
+  variable: "--font-face-mono",
   subsets: ["latin"],
 });
 
@@ -30,7 +32,7 @@ export default function RootLayout({
   return (
     // next-themes sets the theme class before paint, so the server markup differs on purpose.
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} min-h-dvh font-sans antialiased`}>
+      <body className={`${sans.variable} ${mono.variable} min-h-dvh font-sans antialiased`}>
         <ThemeProvider>
           <TooltipProvider delayDuration={300}>
             <Header />

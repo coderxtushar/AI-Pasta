@@ -433,7 +433,7 @@
       },
       {
         "name": "replay-clock",
-        "value": "run time in Geist Mono plus a tangerine scaleX progress line",
+        "value": "run time in JetBrains Mono plus a tangerine scaleX progress line",
         "purpose": "Shows the replay's elapsed run time while it plays."
       },
       {
@@ -489,7 +489,7 @@
       "refersTo": "button-primary",
       "description": "The one main action in an area: Compare, Start comparing, Run batch.",
       "html": "<button class=\"ds-btn-primary\">Compare <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m5 12 7-7 7 7\"/><path d=\"M12 19V5\"/></svg></button>",
-      "css": ".ds-btn-primary { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 16px; border:none; border-radius:8px; background:var(--primary); color:var(--primary-foreground); font:500 14px/1 var(--font-geist-sans, system-ui); cursor:pointer; transition:background .15s; } .ds-btn-primary:hover { background:color-mix(in oklch, var(--primary) 90%, transparent); } .ds-btn-primary:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 16px; border:none; border-radius:8px; background:var(--primary); color:var(--primary-foreground); font:500 14px/1 var(--font-face-sans, system-ui); cursor:pointer; transition:background .15s; } .ds-btn-primary:hover { background:color-mix(in oklch, var(--primary) 90%, transparent); } .ds-btn-primary:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
     },
     {
       "name": "Secondary Button",
@@ -497,7 +497,7 @@
       "refersTo": "button-secondary",
       "description": "Stop, Judge answers, Try this prompt.",
       "html": "<button class=\"ds-btn-secondary\">Stop</button>",
-      "css": ".ds-btn-secondary { height:36px; padding:0 16px; border:none; border-radius:8px; background:var(--secondary); color:var(--secondary-foreground); font:500 14px/1 var(--font-geist-sans, system-ui); cursor:pointer; } .ds-btn-secondary:hover { background:color-mix(in oklch, var(--secondary) 80%, transparent); } .ds-btn-secondary:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
+      "css": ".ds-btn-secondary { height:36px; padding:0 16px; border:none; border-radius:8px; background:var(--secondary); color:var(--secondary-foreground); font:500 14px/1 var(--font-face-sans, system-ui); cursor:pointer; } .ds-btn-secondary:hover { background:color-mix(in oklch, var(--secondary) 80%, transparent); } .ds-btn-secondary:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
     },
     {
       "name": "Ghost Button",
@@ -505,7 +505,7 @@
       "refersTo": "button-ghost",
       "description": "Toolbar actions: Export CSV, Compare answers, New comparison.",
       "html": "<button class=\"ds-btn-ghost\">Export CSV</button>",
-      "css": ".ds-btn-ghost { height:32px; padding:0 12px; border:none; border-radius:8px; background:transparent; color:var(--muted-foreground); font:500 14px/1 var(--font-geist-sans, system-ui); cursor:pointer; } .ds-btn-ghost:hover { background:var(--accent); color:var(--foreground); } .ds-btn-ghost:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
+      "css": ".ds-btn-ghost { height:32px; padding:0 12px; border:none; border-radius:8px; background:transparent; color:var(--muted-foreground); font:500 14px/1 var(--font-face-sans, system-ui); cursor:pointer; } .ds-btn-ghost:hover { background:var(--accent); color:var(--foreground); } .ds-btn-ghost:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
     },
     {
       "name": "Model Chip",
@@ -513,7 +513,7 @@
       "refersTo": "model-chip-selected",
       "description": "Selects a model for a comparison; the dot carries the model's hue.",
       "html": "<label class=\"ds-chip ds-chip-on\"><span class=\"ds-dot\" style=\"background:var(--model-2)\"></span>Claude Sonnet 5.5</label> <label class=\"ds-chip\"><span class=\"ds-dot\" style=\"background:var(--model-3);opacity:.4\"></span>Gemini Flash <span class=\"ds-hint\">no key</span></label>",
-      "css": ".ds-chip { display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 12px; border:1px solid var(--border); border-radius:9999px; color:var(--muted-foreground); font:400 13px/1 var(--font-geist-sans, system-ui); cursor:pointer; } .ds-chip:hover { color:var(--foreground); } .ds-chip-on { background:var(--accent); color:var(--foreground); border-color:color-mix(in oklch, var(--foreground) 20%, transparent); } .ds-dot { width:8px; height:8px; border-radius:9999px; } .ds-hint { font-size:11px; opacity:.7; }"
+      "css": ".ds-chip { display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 12px; border:1px solid var(--border); border-radius:9999px; color:var(--muted-foreground); font:400 13px/1 var(--font-face-sans, system-ui); cursor:pointer; } .ds-chip:hover { color:var(--foreground); } .ds-chip-on { background:var(--accent); color:var(--foreground); border-color:color-mix(in oklch, var(--foreground) 20%, transparent); } .ds-dot { width:8px; height:8px; border-radius:9999px; } .ds-hint { font-size:11px; opacity:.7; }"
     },
     {
       "name": "Text Input",
@@ -521,7 +521,7 @@
       "refersTo": "input",
       "description": "Single-line fields such as API keys and search.",
       "html": "<input class=\"ds-input\" placeholder=\"Search prompts…\" />",
-      "css": ".ds-input { height:36px; width:280px; padding:0 12px; border:1px solid var(--input); border-radius:8px; background:transparent; color:var(--foreground); caret-color:var(--brand); font:400 14px/1 var(--font-geist-sans, system-ui); } .ds-input::placeholder { color:var(--muted-foreground); } .ds-input:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
+      "css": ".ds-input { height:36px; width:280px; padding:0 12px; border:1px solid var(--input); border-radius:8px; background:transparent; color:var(--foreground); caret-color:var(--brand); font:400 14px/1 var(--font-face-sans, system-ui); } .ds-input::placeholder { color:var(--muted-foreground); } .ds-input:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
     },
     {
       "name": "Answer Card",
@@ -529,14 +529,14 @@
       "refersTo": "answer-card",
       "description": "One model's answer with its status and a mono metric footer.",
       "html": "<section class=\"ds-card\"><header class=\"ds-card-h\"><span class=\"ds-dot\" style=\"background:var(--model-4)\"></span><b>DeepSeek Chat</b><span class=\"ds-badge\">Fastest</span><span class=\"ds-done\">Done</span></header><div class=\"ds-card-b\">Ranks each customer's orders by date and keeps the top three.</div><footer class=\"ds-card-f\">first token 1.15s · total 4.48s · 36 in / 131 out tokens · cost —</footer></section>",
-      "css": ".ds-card { width:340px; border:1px solid var(--border); border-radius:14px; background:var(--card); color:var(--card-foreground); overflow:hidden; font-family:var(--font-geist-sans, system-ui); } .ds-card-h { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); font-size:14px; } .ds-card-h b { font-weight:600; } .ds-badge { margin-left:auto; padding:2px 8px; border-radius:9999px; background:color-mix(in oklch, var(--success) 15%, transparent); color:var(--success); font-size:11px; font-weight:500; } .ds-done { color:var(--success); font-size:12px; font-weight:500; } .ds-card-b { padding:12px 14px; font-size:14px; line-height:1.65; } .ds-card-f { padding:8px 14px; border-top:1px solid var(--border); background:var(--subtle); color:var(--muted-foreground); font:400 12px/1.67 var(--font-geist-mono, ui-monospace); font-variant-numeric:tabular-nums; } .ds-dot { width:10px; height:10px; border-radius:9999px; }"
+      "css": ".ds-card { width:340px; border:1px solid var(--border); border-radius:14px; background:var(--card); color:var(--card-foreground); overflow:hidden; font-family:var(--font-face-sans, system-ui); } .ds-card-h { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); font-size:14px; } .ds-card-h b { font-weight:600; } .ds-badge { margin-left:auto; padding:2px 8px; border-radius:9999px; background:color-mix(in oklch, var(--success) 15%, transparent); color:var(--success); font-size:11px; font-weight:500; } .ds-done { color:var(--success); font-size:12px; font-weight:500; } .ds-card-b { padding:12px 14px; font-size:14px; line-height:1.65; } .ds-card-f { padding:8px 14px; border-top:1px solid var(--border); background:var(--subtle); color:var(--muted-foreground); font:400 12px/1.67 var(--font-face-mono, ui-monospace); font-variant-numeric:tabular-nums; } .ds-dot { width:10px; height:10px; border-radius:9999px; }"
     },
     {
       "name": "Top Navigation",
       "kind": "nav",
       "description": "Sticky top bar with section links; the active link takes the accent tint.",
       "html": "<nav class=\"ds-nav\"><b>AI Pasta</b><a class=\"ds-nav-on\">Compare</a><a>Batch</a><a>History</a><span class=\"ds-nav-cta\">Start comparing</span></nav>",
-      "css": ".ds-nav { display:flex; align-items:center; gap:8px; height:56px; padding:0 24px; border-bottom:1px solid var(--border); background:color-mix(in oklch, var(--background) 85%, transparent); font:400 14px/1 var(--font-geist-sans, system-ui); } .ds-nav b { font-weight:600; margin-right:12px; } .ds-nav a { padding:6px 10px; border-radius:6px; color:var(--muted-foreground); cursor:pointer; } .ds-nav a:hover { color:var(--foreground); } .ds-nav .ds-nav-on { background:var(--accent); color:var(--foreground); } .ds-nav-cta { margin-left:auto; padding:8px 12px; border-radius:8px; background:var(--primary); color:var(--primary-foreground); font-weight:500; }"
+      "css": ".ds-nav { display:flex; align-items:center; gap:8px; height:56px; padding:0 24px; border-bottom:1px solid var(--border); background:color-mix(in oklch, var(--background) 85%, transparent); font:400 14px/1 var(--font-face-sans, system-ui); } .ds-nav b { font-weight:600; margin-right:12px; } .ds-nav a { padding:6px 10px; border-radius:6px; color:var(--muted-foreground); cursor:pointer; } .ds-nav a:hover { color:var(--foreground); } .ds-nav .ds-nav-on { background:var(--accent); color:var(--foreground); } .ds-nav-cta { margin-left:auto; padding:8px 12px; border-radius:8px; background:var(--primary); color:var(--primary-foreground); font-weight:500; }"
     },
     {
       "name": "Keycap",
@@ -544,7 +544,7 @@
       "refersTo": "keycap",
       "description": "Keyboard hints; every one shown has a working binding.",
       "html": "<kbd class=\"ds-kbd\">⌘</kbd> <kbd class=\"ds-kbd\">K</kbd>",
-      "css": ".ds-kbd { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 4px; border-radius:6px; background:var(--muted); color:var(--muted-foreground); font:500 12px/1 var(--font-geist-sans, system-ui); }"
+      "css": ".ds-kbd { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 4px; border-radius:6px; background:var(--muted); color:var(--muted-foreground); font:500 12px/1 var(--font-face-sans, system-ui); }"
     }
   ],
   "narrative": {
@@ -554,7 +554,7 @@
       "Near-black cool ground, three surface steps, 1px white-alpha hairlines",
       "Light-on-dark primary buttons; keyboard hints as keycaps",
       "One colour per model, the same on every surface",
-      "Metrics in Geist Mono with tabular figures, beside every answer",
+      "Metrics in JetBrains Mono with tabular figures, beside every answer",
       "One warm accent, reserved for live and attention signals",
       "Motion that eases out (expo) from a visible end state: one authored entrance, the rest feedback"
     ],
@@ -571,7 +571,7 @@
       },
       {
         "name": "The Numbers-Up Rule",
-        "body": "Measurements are always set in Geist Mono with tabular figures",
+        "body": "Measurements are always set in JetBrains Mono with tabular figures",
         "section": "typography"
       },
       {
@@ -581,7 +581,7 @@
       }
     ],
     "dos": [
-      "Do show latency, tokens and cost beside every answer, in Geist Mono with tabular figures.",
+      "Do show latency, tokens and cost beside every answer, in JetBrains Mono with tabular figures.",
       "Do keep each model's hue identical on every surface, and grey while blind.",
       "Do reserve tangerine for live and attention signals.",
       "Do label any example data as an example, and any recorded run with its date.",

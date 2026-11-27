@@ -7,7 +7,7 @@ import { DemoReplay, type DemoRun } from "@/components/landing/demo-replay";
 import { EnterToStart } from "@/components/landing/enter-to-start";
 import { Spotlight } from "@/components/landing/spotlight";
 import Model from "./components/Model";
-import { formatMetrics } from "./library/format";
+import { MetricsLine } from "@/components/workspace/metrics-line";
 import demo from "./library/demo-run.json";
 import { MODELS, findModel } from "./library/models";
 import { modelColor } from "./library/modelColors";
@@ -145,15 +145,16 @@ function MetricsVisual() {
                 </span>
               )}
             </div>
-            <p className="mt-1 font-mono text-xs text-muted-foreground tabular">
-              {formatMetrics({
+            <MetricsLine
+              className="mt-1"
+              metrics={{
                 ttftMs: a.ttftMs,
                 totalMs: a.totalMs,
                 inputTokens: a.inputTokens,
                 outputTokens: a.outputTokens,
                 costUsd: a.costUsd,
-              })}
-            </p>
+              }}
+            />
           </div>
         ))}
       </div>

@@ -4,7 +4,7 @@ import { AlertTriangle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnswerMarkdown } from "@/components/workspace/answer-markdown";
-import type { GenerateMetrics } from "../library/stream";
+import { MetricsLine } from "@/components/workspace/metrics-line";
 import type { RunState } from "../library/generateClient";
 import { formatMetrics, formatMetricsCompact } from "../library/format";
 
@@ -54,21 +54,6 @@ function UserMessage({ text }: { text: string }) {
   return (
     <div className="my-3 rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap">
       <span className="font-medium">You:</span> {text}
-    </div>
-  );
-}
-
-function MetricsLine({ metrics }: { metrics: GenerateMetrics }) {
-  // Each item stays on one line; the line wraps only between items.
-  const parts = formatMetrics(metrics).split(" · ");
-  return (
-    <div className="font-mono text-xs leading-5 text-muted-foreground tabular">
-      {parts.map((part, i) => (
-        <span key={i}>
-          <span className="whitespace-nowrap">{part}</span>
-          {i < parts.length - 1 && " · "}
-        </span>
-      ))}
     </div>
   );
 }
