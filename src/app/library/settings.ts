@@ -74,3 +74,24 @@ export function describeSettings(s: GenerationSettings): string {
   if (s.maxOutputTokens !== undefined) parts.push(`max ${s.maxOutputTokens} tokens`);
   return parts.join(" · ");
 }
+
+/** Client-side check matching the server's rules; returns the first problem or null. */
+export function settingsError(s: GenerationSettings): string | null {
+  const L = SETTINGS_LIMITS;
+  if (s.systemPrompt && s.systemPrompt.length > L.systemPromptChars) {
+    return `System prompt must be at most ${L.systemPromptChars} characters.`;
+  }
+  if (s.temperature !== undefined && (s.temperature < L.temperature.min || s.temperature > L.temperature.max)) {
+    return `Temperature must be between ${L.temperature.min} and ${L.temperature.max}.`;
+  }
+  if (s.topP !== undefined && (s.topP < L.topP.min || s.topP > L.topP.max)) {
+    return `Top-p must be between ${L.topP.min} and ${L.topP.max}.`;
+  }
+  if (s.maxOutputTokens !== undefined) {
+    if (!Number.isInteger(s.maxOutputTokens)) return "Max tokens must be a whole number.";
+    if (s.maxOutputTokens < L.maxOutputTokens.min || s.maxOutputTokens > L.maxOutputTokens.max) {
+      return `Max tokens must be between ${L.maxOutputTokens.min} and ${L.maxOutputTokens.max}.`;
+    }
+  }
+  return null;
+}

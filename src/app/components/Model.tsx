@@ -56,6 +56,11 @@ const Model: React.FC<ModelProps> = ({ label, state }) => {
       {state.metrics && (
         <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>{formatMetrics(state.metrics)}</div>
       )}
+      {state.metrics?.notes?.map((note) => (
+        <div key={note} style={{ marginTop: 4, fontSize: 12, color: "#b45309" }}>
+          Note: {note}
+        </div>
+      ))}
     </section>
   );
 };

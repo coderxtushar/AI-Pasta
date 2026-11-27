@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanSettings, compactSettings, describeSettings, effectiveSettings, isEmpty } from "./settings";
+import { cleanSettings, compactSettings, describeSettings, effectiveSettings, isEmpty, settingsError } from "./settings";
 
 describe("settings", () => {
   it("drops unset values and blank system prompts", () => {
@@ -33,5 +33,14 @@ describe("settings", () => {
       "system prompt · temperature 0 · top-p 0.9 · max 512 tokens"
     );
     expect(describeSettings({})).toBe("");
+  });
+
+  it("validates like the server", () => {
+    expect(settingsError({ temperature: 2, topP: 0, maxOutputTokens: 16 })).toBeNull();
+    expect(settingsError({ temperature: 2.1 })).toBe("Temperature must be between 0 and 2.");
+    expect(settingsError({ topP: 1.5 })).toBe("Top-p must be between 0 and 1.");
+    expect(settingsError({ maxOutputTokens: 100.5 })).toBe("Max tokens must be a whole number.");
+    expect(settingsError({ maxOutputTokens: 99_999 })).toBe("Max tokens must be between 16 and 32768.");
+    expect(settingsError({ systemPrompt: "x".repeat(10_001) })).toContain("System prompt");
   });
 });

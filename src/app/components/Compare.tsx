@@ -9,6 +9,26 @@ import { PROVIDERS, PROVIDER_IDS, type ApiKeys, type ProviderId, type SavedKeyIn
 import { clearKeys, hasAnyKey, loadKeys } from "../library/keys";
 import { saveKeyToAccount, upsertKey } from "../library/accountKeys";
 import { readNdjson, type StreamEvent } from "../library/stream";
+import SettingsPanel from "./SettingsPanel";
+import {
+  EMPTY_SETTINGS,
+  compactSettings,
+  effectiveSettings,
+  settingsError,
+  type ComparisonSettings,
+} from "../library/settings";
+
+const SETTINGS_STORAGE_KEY = "generationSettings";
+
+function loadStoredSettings(): ComparisonSettings | null {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed.all === "object" && typeof parsed.perModel === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 type Props = {
   /** Signed-in users get each run saved to their history. */
@@ -23,13 +43,22 @@ type Props = {
   /** Pre-fill from an earlier comparison (re-run). */
   initialPrompt?: string;
   initialModels?: string[];
+  initialSettings?: ComparisonSettings | null;
 };
 
-export default function Compare({ signedIn, authEnabled, accountKeys, initialPrompt, initialModels }: Props) {
+export default function Compare({
+  signedIn,
+  authEnabled,
+  accountKeys,
+  initialPrompt,
+  initialModels,
+  initialSettings,
+}: Props) {
   const [prompt, setPrompt] = useState(initialPrompt ?? "");
   const [selectedModels, setSelectedModels] = useState<string[]>(
     initialModels?.length ? initialModels : MODELS.map((m) => m.id)
   );
+  const [settings, setSettings] = useState<ComparisonSettings>(initialSettings ?? EMPTY_SETTINGS);
   const [runOrder, setRunOrder] = useState<string[]>([]);
   const [runs, setRuns] = useState<Record<string, RunState>>({});
   const [error, setError] = useState<string | null>(null);
@@ -55,8 +84,27 @@ export default function Compare({ signedIn, authEnabled, accountKeys, initialPro
 
   useEffect(() => {
     setKeys(loadKeys());
+    // A re-run brings its own settings; otherwise restore this browser's last ones.
+    if (!initialSettings) {
+      const stored = loadStoredSettings();
+      if (stored) setSettings(stored);
+    }
     return () => abortRef.current?.abort();
-  }, []);
+  }, [initialSettings]);
+
+  function changeSettings(next: ComparisonSettings) {
+    setSettings(next);
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Storage can be unavailable (private mode); settings still apply to this session.
+    }
+  }
+
+  const orderedSelection = MODELS.map((m) => m.id).filter((id) => selectedModels.includes(id));
+  const settingsInvalid = [settings.all, ...orderedSelection.map((id) => settings.perModel[id] ?? {})].some(
+    (s) => settingsError(s) !== null
+  );
 
   function toggleModel(id: string) {
     setSelectedModels((prev) =>
@@ -86,7 +134,13 @@ export default function Compare({ signedIn, authEnabled, accountKeys, initialPro
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, model: modelId, apiKey, comparisonId: comparisonId ?? undefined }),
+        body: JSON.stringify({
+          prompt,
+          model: modelId,
+          apiKey,
+          comparisonId: comparisonId ?? undefined,
+          settings: effectiveSettings(settings, modelId),
+        }),
         signal,
       });
       if (!res.ok || !res.body) {
@@ -136,7 +190,7 @@ export default function Compare({ signedIn, authEnabled, accountKeys, initialPro
     const runId = ++runIdRef.current;
 
     // Keep the registry order so columns don't jump around between runs.
-    const ids = MODELS.map((m) => m.id).filter((id) => selectedModels.includes(id));
+    const ids = orderedSelection;
     setRunOrder(ids);
     setRuns(Object.fromEntries(ids.map((id) => [id, { status: "streaming", text: "" }])));
 
@@ -166,7 +220,7 @@ export default function Compare({ signedIn, authEnabled, accountKeys, initialPro
       const res = await fetch("/api/comparisons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, models: callable }),
+        body: JSON.stringify({ prompt, models: callable, settings: compactSettings(settings, callable) }),
         signal,
       });
       const data = await res.json().catch(() => null);
@@ -314,10 +368,12 @@ export default function Compare({ signedIn, authEnabled, accountKeys, initialPro
                 </div>
               </div>
 
+              <SettingsPanel value={settings} onChange={changeSettings} modelIds={orderedSelection} />
+
               <div style={{ marginTop: 8, display: "flex", gap: 12, alignItems: "center" }}>
                 <button
                   type="submit"
-                  disabled={loading || selectedModels.length === 0 || !prompt.trim() || !hasKeys}
+                  disabled={loading || selectedModels.length === 0 || !prompt.trim() || !hasKeys || settingsInvalid}
                   style={{
                     padding: "10px 16px",
                     borderRadius: 8,

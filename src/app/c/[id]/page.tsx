@@ -7,6 +7,7 @@ import { getComparisonForViewer, type SavedResponse } from "@/server/comparisons
 import Model, { type RunState } from "../../components/Model";
 import CopyLinkButton from "../../components/CopyLinkButton";
 import { findModel } from "../../library/models";
+import { cleanSettings, describeSettings, type ComparisonSettings } from "../../library/settings";
 import { deleteComparisonAction, setShareAction } from "../../actions";
 
 type Props = { params: Promise<{ id: string }> };
@@ -38,6 +39,7 @@ function toRunState(r: SavedResponse): RunState {
       reasoningTokens: r.reasoningTokens ?? undefined,
       costUsd: r.costUsd ?? undefined,
       finishReason: r.finishReason ?? undefined,
+      notes: r.notes ?? undefined,
     },
   };
 }
@@ -50,6 +52,39 @@ const button: React.CSSProperties = {
   cursor: "pointer",
   fontSize: 14,
 };
+
+/** What the models were run with: shared settings, per-model overrides, and the system prompt(s). */
+function SettingsSummary({ settings }: { settings: ComparisonSettings | null }) {
+  const all = cleanSettings(settings?.all);
+  const overrides = Object.entries(settings?.perModel ?? {})
+    .map(([id, s]) => [id, cleanSettings(s)] as const)
+    .filter(([, s]) => Object.keys(s).length > 0);
+  const systemPrompts = [
+    ...(all.systemPrompt ? [["All models", all.systemPrompt] as const] : []),
+    ...overrides
+      .filter(([, s]) => s.systemPrompt)
+      .map(([id, s]) => [findModel(id)?.label ?? id, s.systemPrompt!] as const),
+  ];
+
+  return (
+    <div style={{ marginTop: 8, fontSize: 13, color: "#374151" }} aria-label="Generation settings">
+      <div>
+        <strong>Settings:</strong> {describeSettings(all) || "provider defaults"}
+      </div>
+      {overrides.map(([id, s]) => (
+        <div key={id}>
+          <strong>{findModel(id)?.label ?? id}:</strong> {describeSettings(s)}
+        </div>
+      ))}
+      {systemPrompts.map(([who, text]) => (
+        <details key={who} style={{ marginTop: 4 }}>
+          <summary style={{ cursor: "pointer" }}>System prompt ({who})</summary>
+          <pre style={{ whiteSpace: "pre-wrap", margin: "4px 0 0", fontFamily: "inherit" }}>{text}</pre>
+        </details>
+      ))}
+    </div>
+  );
+}
 
 export default async function ComparisonPage({ params }: Props) {
   const { id } = await params;
@@ -107,6 +142,7 @@ export default async function ComparisonPage({ params }: Props) {
         >
           {comparison.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
         </time>
+        <SettingsSummary settings={comparison.settings} />
       </section>
 
       <div style={{ display: "grid", gap: 12 }}>

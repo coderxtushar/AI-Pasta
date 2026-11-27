@@ -1,6 +1,7 @@
 // A fake OpenAI-compatible provider for end-to-end tests (used as Qwen).
 //   prompt "slow" -> streams "tick " for ~10s (to test Stop)
 //   prompt "fail" -> 401
+//   prompt "echo-settings" -> replies with the system prompt and sampling settings it received
 //   anything else -> streams "Hello from the mock!"
 // GET /last-auth returns the last Authorization header; GET /health for readiness.
 import http from "node:http";
@@ -30,7 +31,14 @@ http
     res.on("close", () => (closed = true));
     const chunk = (payload) => `data: ${JSON.stringify({ id: "m", object: "chat.completion.chunk", created: 0, model: body.model, ...payload })}\n\n`;
 
-    const words = prompt === "slow" ? Array(50).fill("tick ") : ["Hello", " from", " the", " mock", "!"];
+    const system = body.messages?.find((m) => m.role === "system")?.content ?? "none";
+    const echo = `system=${system} temperature=${body.temperature ?? "none"} top_p=${body.top_p ?? "none"} max_tokens=${body.max_tokens ?? "none"}`;
+    const words =
+      prompt === "slow"
+        ? Array(50).fill("tick ")
+        : prompt === "echo-settings"
+          ? [echo]
+          : ["Hello", " from", " the", " mock", "!"];
     await sleep(200);
     res.write(chunk({ choices: [{ index: 0, delta: { role: "assistant", content: "" }, finish_reason: null }] }));
     for (const word of words) {
