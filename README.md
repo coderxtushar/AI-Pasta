@@ -34,7 +34,17 @@ Signed-in batches can save each prompt to your history.
 pages. Columns: prompt, input, model, status, answer, error, latency, tokens, cost,
 notes, settings, judge scores, blind pick. Cells that would start a spreadsheet
 formula (`=`, `+`, `-`, `@`) are prefixed with `'` so opening the file can't run
-anything an answer contains. Signed-in users get a saved history, can
+anything an answer contains.
+
+**Multi-turn chat**: after the answers arrive, send a follow-up and every model
+continues its own conversation, seeing its own earlier answers (not the other
+models'). That's up to 20 turns, each with the same system prompt and settings. If
+a model failed on an earlier turn, your message is kept, and the server merges
+back-to-back messages so every provider gets a valid conversation. Signed-in
+conversations are saved turn by turn; each follow-up is stored before its answers,
+and a stale tab can't skip or repeat a turn. Blind votes, the leaderboard and the
+AI judge are about the first prompt, so the judge isn't offered once a conversation
+has follow-ups. CSV exports include a `turn` column. Signed-in users get a saved history, can
 share any comparison with a public link, and can store their API keys encrypted in
 their account.
 
