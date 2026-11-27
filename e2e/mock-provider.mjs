@@ -2,6 +2,7 @@
 //   prompt "slow" -> streams "tick " for ~10s (to test Stop)
 //   prompt "fail" -> 401
 //   prompt "echo-settings" -> replies with the system prompt and sampling settings it received
+//   prompt "echo: …" -> replies "You said: echo: …" (the exact prompt it received)
 //   anything else -> streams "Hello from the mock!" (DeepSeek: "Hi from the second mock!")
 // Non-streaming requests are judge calls: it returns a JSON verdict that prefers
 // the answer containing "second", referring to answers by the judge's letters.
@@ -68,6 +69,8 @@ http
         ? Array(50).fill("tick ")
         : prompt === "echo-settings"
           ? [echo]
+          : prompt.startsWith("echo:")
+            ? [`You said: ${prompt}`]
           : body.model === "deepseek-chat"
             ? ["Hi", " from", " the", " second", " mock!"]
             : ["Hello", " from", " the", " mock", "!"];

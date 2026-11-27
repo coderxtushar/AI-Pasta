@@ -29,6 +29,9 @@ export default async function Header() {
       <Link href="/" style={{ fontWeight: 700, fontSize: 18 }}>
         AI Pasta
       </Link>
+      <Link href="/batch" style={{ fontSize: 14, color: "#2563eb" }}>
+        Batch
+      </Link>
       {session?.user && (
         <>
           <Link href="/history" style={{ fontSize: 14, color: "#2563eb" }}>
