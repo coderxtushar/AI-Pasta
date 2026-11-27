@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E } from "./env";
-import { lastProviderAuth, modelCard, saveBrowserKey, signIn, watchResponses } from "./helpers";
+import { closeSheet, lastProviderAuth, modelCard, openKeys, saveBrowserKey, signIn, watchResponses } from "./helpers";
 
 // One user journey, in order: the tests share the saved comparison.
 test.describe.configure({ mode: "serial" });
@@ -10,7 +10,7 @@ let comparisonPath = "";
 
 test("moves browser keys into the account", async ({ page, context }) => {
   const responses = watchResponses(page);
-  await page.goto("/");
+  await page.goto("/app");
   await saveBrowserKey(page, "Qwen", KEY);
 
   await signIn(context, E2E.ownerToken);
@@ -20,7 +20,9 @@ test("moves browser keys into the account", async ({ page, context }) => {
 
   await page.getByRole("button", { name: "Move to account" }).click();
   await expect(page.getByText("This browser has API keys saved locally")).toBeHidden();
-  await expect(page.getByText("••••WXYZ")).toBeVisible();
+  const keys = await openKeys(page);
+  await expect(keys.getByText("••••WXYZ")).toBeVisible();
+  await closeSheet(page);
   expect(await page.evaluate(() => localStorage.getItem("apiKeys"))).toBeNull();
   responses.expectNoneContain(KEY);
 });
@@ -28,9 +30,9 @@ test("moves browser keys into the account", async ({ page, context }) => {
 test("runs with the account key and saves to history", async ({ page, context, request }) => {
   await signIn(context, E2E.ownerToken);
   const responses = watchResponses(page);
-  await page.goto("/");
+  await page.goto("/app");
   await page.locator("#prompt").fill("e2e history prompt");
-  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
 
   await expect(modelCard(page, "Qwen Plus").getByText("Hello from the mock!")).toBeVisible();
   await expect(modelCard(page, "GPT-5.4 Mini").getByText("No OpenAI key saved to your account.")).toBeVisible();
@@ -105,15 +107,17 @@ test("delete removes the comparison", async ({ page, context }) => {
 test("replacing and removing the saved key", async ({ page, context }) => {
   await signIn(context, E2E.ownerToken);
   const responses = watchResponses(page);
-  await page.goto("/");
-  await page.getByRole("button", { name: "Replace Qwen key" }).click();
-  await page.getByLabel("Qwen key").fill("sk-e2e-replaced-9876");
-  await page.getByLabel("Qwen key").press("Enter");
-  await expect(page.getByText("••••9876")).toBeVisible();
+  await page.goto("/app");
+  const keys = await openKeys(page);
+  await keys.getByRole("button", { name: "Replace Qwen key" }).click();
+  await keys.getByLabel("Qwen key").fill("sk-e2e-replaced-9876");
+  await keys.getByLabel("Qwen key").press("Enter");
+  await expect(keys.getByText("••••9876")).toBeVisible();
 
-  await page.getByRole("button", { name: "Remove Qwen key" }).click();
-  await expect(page.getByText("Qwen key removed.")).toBeVisible();
+  await keys.getByRole("button", { name: "Remove Qwen key" }).click();
+  await expect(keys.getByText("Qwen key removed.")).toBeVisible();
+  await closeSheet(page);
   await page.locator("#prompt").fill("hi");
-  await expect(page.getByRole("button", { name: "Submit" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Compare", exact: true })).toBeDisabled();
   responses.expectNoneContain("sk-e2e-replaced-9876");
 });

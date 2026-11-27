@@ -1,11 +1,21 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowUp, Download, EyeOff, Plus, RotateCcw, Square } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { CopyButton } from "@/components/workspace/copy-button";
+import { KeysSheet } from "@/components/workspace/keys-sheet";
+import { DiffDialog } from "@/components/workspace/diff-dialog";
+import { CommandMenu } from "@/components/workspace/command-menu";
 import Model from "./Model";
 import { streamGenerate, type RunState } from "../library/generateClient";
-import ApiManager from "./ApiManager";
-import AccountKeyManager from "./AccountKeyManager";
 import { MODELS, findModel } from "../library/models";
+import { modelColor } from "../library/modelColors";
 import { PROVIDERS, PROVIDER_IDS, type ApiKeys, type ProviderId, type SavedKeyInfo } from "../library/providers";
 import { clearKeys, hasAnyKey, loadKeys } from "../library/keys";
 import { saveKeyToAccount, upsertKey } from "../library/accountKeys";
@@ -26,17 +36,6 @@ import {
   type ComparisonSettings,
 } from "../library/settings";
 
-const voteButton: React.CSSProperties = {
-  padding: "6px 12px",
-  borderRadius: 8,
-  border: "1px solid #6366f1",
-  background: "#fff",
-  color: "#3730a3",
-  cursor: "pointer",
-  fontWeight: 600,
-};
-
-
 type Props = {
   /** Signed-in users get each run saved to their history. */
   signedIn: boolean;
@@ -52,6 +51,15 @@ type Props = {
   initialModels?: string[];
   initialSettings?: ComparisonSettings | null;
 };
+
+/** Prompts a developer might really be weighing models on; clicking one fills the composer. */
+const EXAMPLES = [
+  "Write a Postgres query that returns each customer's three most recent orders, with a short explanation.",
+  "Explain optimistic vs pessimistic locking in two paragraphs, then say which to use for a ticket booking API.",
+  "Write a friendly, specific error message for a failed card payment in under 25 words.",
+];
+
+type RunRequest = { prompt?: string; messages?: ChatMessage[] };
 
 export default function Compare({
   signedIn,
@@ -87,6 +95,8 @@ export default function Compare({
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [keysOpen, setKeysOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Browser-held keys (anonymous mode, or waiting to be moved to the account).
   const [keys, setKeys] = useState<ApiKeys>({});
   const [savedKeys, setSavedKeys] = useState<SavedKeyInfo[] | null>(accountKeys);
@@ -94,10 +104,12 @@ export default function Compare({
   const [migration, setMigration] = useState<{ busy: boolean; error?: string; dismissed?: boolean }>({
     busy: false,
   });
+  const promptRef = useRef<HTMLTextAreaElement>(null);
 
   const hasProviderKey = (provider: ProviderId) =>
     accountMode ? savedKeys.some((k) => k.provider === provider) : Boolean(keys[provider]);
   const hasKeys = accountMode ? savedKeys.length > 0 : hasAnyKey(keys);
+  const keyCount = PROVIDER_IDS.filter((p) => hasProviderKey(p)).length;
   const showMigration = accountMode && hasAnyKey(keys) && !migration.dismissed;
   const loading = runOrder.some((id) => runs[id]?.status === "streaming");
 
@@ -124,49 +136,46 @@ export default function Compare({
   const settingsInvalid = [settings.all, ...orderedSelection.map((id) => settings.perModel[id] ?? {})].some(
     (s) => settingsError(s) !== null
   );
+  const canSubmit = !loading && selectedModels.length > 0 && prompt.trim().length > 0 && hasKeys && !settingsInvalid;
 
   function toggleModel(id: string) {
-    setSelectedModels((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
+    setSelectedModels((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
 
-  async function runModel(
-    runId: number,
-    modelId: string,
-    comparisonId: string | null,
-    signal: AbortSignal,
-    update: (runId: number, modelId: string, fn: (prev: RunState) => RunState) => void,
-    /** This model's conversation for a follow-up; the first turn sends `prompt` instead. */
-    messages?: ChatMessage[]
-  ) {
+  const updateRun = (id: number, modelId: string, fn: (prev: RunState) => RunState) => {
+    if (id !== runIdRef.current) return;
+    setRuns((prev) => (prev[modelId] ? { ...prev, [modelId]: fn(prev[modelId]) } : prev));
+  };
+
+  async function runModel(runId: number, modelId: string, comparisonId: string | null, signal: AbortSignal, request: RunRequest) {
     const model = findModel(modelId);
     if (!model) return;
     if (!hasProviderKey(model.provider)) {
       const label = PROVIDERS[model.provider].label;
       const error = accountMode ? `No ${label} key saved to your account.` : `No ${label} API key saved.`;
-      update(runId, modelId, (p) => ({ ...p, status: "error", error }));
+      updateRun(runId, modelId, (p) => ({ ...p, status: "error", error }));
       return;
     }
     // In account mode the server looks up the saved key; the browser never has it.
     const apiKey = accountMode ? undefined : keys[model.provider];
     await streamGenerate(
       {
-        ...(messages ? { messages } : { prompt }),
+        ...request,
         model: modelId,
         apiKey,
         comparisonId: comparisonId ?? undefined,
         settings: effectiveSettings(settings, modelId),
       },
-      { signal, onUpdate: (state) => update(runId, modelId, () => state) }
+      { signal, onUpdate: (state) => updateRun(runId, modelId, () => state) }
     );
   }
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
+    if (!canSubmit) return;
     setError(null);
     if (!hasKeys) {
-      setError("API keys missing — open the API Keys panel on the right and save keys.");
+      setError("Add an API key for at least one provider first.");
       return;
     }
 
@@ -178,31 +187,27 @@ export default function Compare({
     // Keep the registry order so columns don't jump around between runs; blind
     // runs are shuffled so position doesn't give the models away.
     const ids = blind ? shuffle(orderedSelection) : orderedSelection;
+    const text = prompt;
     setRunOrder(ids);
     setBlindRun(blind ? { revealed: false } : null);
     setVerdict(null);
-    setRunPrompt(prompt);
-    setTurnPrompts([prompt]);
+    setRunPrompt(text);
+    setTurnPrompts([text]);
     setEarlier([]);
     setFollowUp("");
     setRuns(Object.fromEntries(ids.map((id) => [id, { status: "streaming", text: "" }])));
 
-    const update = (id: number, modelId: string, fn: (prev: RunState) => RunState) => {
-      if (id !== runIdRef.current) return;
-      setRuns((prev) => (prev[modelId] ? { ...prev, [modelId]: fn(prev[modelId]) } : prev));
-    };
-
     setSavedId(null);
     setSaveNotice(null);
-    const comparisonId = signedIn ? await createComparison(ids, controller.signal) : null;
+    const comparisonId = signedIn ? await createComparison(ids, text, controller.signal) : null;
     if (runId !== runIdRef.current) return;
     setSavedId(comparisonId);
 
-    await Promise.all(ids.map((id) => runModel(runId, id, comparisonId, controller.signal, update)));
+    await Promise.all(ids.map((id) => runModel(runId, id, comparisonId, controller.signal, { prompt: text })));
   }
 
   /** Creates the history entry. Failure to save never blocks the comparison itself. */
-  async function createComparison(ids: string[], signal: AbortSignal): Promise<string | null> {
+  async function createComparison(ids: string[], text: string, signal: AbortSignal): Promise<string | null> {
     // Only models we can actually call get stored with the comparison.
     const callable = ids.filter((id) => {
       const model = findModel(id);
@@ -213,7 +218,7 @@ export default function Compare({
       const res = await fetch("/api/comparisons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, models: callable, settings: compactSettings(settings, callable), blind }),
+        body: JSON.stringify({ prompt: text, models: callable, settings: compactSettings(settings, callable), blind }),
         signal,
       });
       const data = await res.json().catch(() => null);
@@ -230,6 +235,43 @@ export default function Compare({
 
   function handleStop() {
     abortRef.current?.abort();
+  }
+
+  /** Clears the results (keeps the prompt) so a new comparison can start. */
+  function newComparison() {
+    abortRef.current?.abort();
+    runIdRef.current++;
+    setRunOrder([]);
+    setRuns({});
+    setTurnPrompts([]);
+    setEarlier([]);
+    setFollowUp("");
+    setBlindRun(null);
+    setVerdict(null);
+    setSavedId(null);
+    setSaveNotice(null);
+    setError(null);
+    promptRef.current?.focus();
+  }
+
+  /** Runs one model again for the current turn (after an error or a stop). */
+  async function retryModel(id: string) {
+    if (loading) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
+    const turn = turnPrompts.length - 1;
+    const request: RunRequest =
+      turn <= 0
+        ? { prompt: runPrompt }
+        : {
+            messages: [
+              ...buildHistory(turnPrompts.slice(0, turn), earlier.map((states) => states[id]?.text)),
+              { role: "user", content: turnPrompts[turn] },
+            ],
+          };
+    setRuns((prev) => ({ ...prev, [id]: { status: "streaming", text: "" } }));
+    await runModel(runId, id, savedId, controller.signal, request);
   }
 
   /** Reveals the names and, for saved comparisons, records the pick (null = tie). */
@@ -253,7 +295,8 @@ export default function Compare({
   }
 
   /** Sends a follow-up to every model in the conversation, each with its own history. */
-  async function sendFollowUp() {
+  async function sendFollowUp(e?: React.FormEvent) {
+    e?.preventDefault();
     const content = followUp.trim();
     if (!content || loading) return;
     const turn = turnPrompts.length;
@@ -308,12 +351,8 @@ export default function Compare({
     }
     if (runId !== runIdRef.current) return;
 
-    const update = (id: number, modelId: string, fn: (prev: RunState) => RunState) => {
-      if (id !== runIdRef.current) return;
-      setRuns((prev) => (prev[modelId] ? { ...prev, [modelId]: fn(prev[modelId]) } : prev));
-    };
     await Promise.all(
-      runOrder.map((id) => runModel(runId, id, comparisonId, controller.signal, update, histories[id]))
+      runOrder.map((id) => runModel(runId, id, comparisonId, controller.signal, { messages: histories[id] }))
     );
   }
 
@@ -339,16 +378,28 @@ export default function Compare({
 
   const answeredIds = runOrder.filter((id) => runs[id]?.status === "done");
   const hiddenNames = blindRun !== null && !blindRun.revealed;
-  const displayName = (id: string) =>
-    hiddenNames ? blindLabel(runOrder.indexOf(id)) : findModel(id)?.label ?? id;
+  const displayName = (id: string) => (hiddenNames ? blindLabel(runOrder.indexOf(id)) : findModel(id)?.label ?? id);
   const judgeOptions = MODELS.map((m) => m.id).filter((id) => {
     const model = findModel(id);
     return model && hasProviderKey(model.provider);
   });
-  const finishedAnswers = answeredIds
-    .map((id) => ({ modelId: id, text: runs[id].text }))
-    .filter((a) => a.text.trim());
+  const finishedAnswers = answeredIds.map((id) => ({ modelId: id, text: runs[id].text })).filter((a) => a.text.trim());
   const awaitingVote = blindRun !== null && !blindRun.revealed && !loading && runOrder.length > 0;
+  const hasResults = runOrder.length > 0;
+  const inConversation = hasResults && !loading && !hiddenNames && turnPrompts.length < MAX_TURNS;
+
+  // "Fastest" and "Cheapest" among finished answers, once names are visible.
+  const measured = answeredIds.filter((id) => runs[id].metrics);
+  const fastest =
+    !hiddenNames && !loading && measured.length >= 2
+      ? measured.reduce((a, b) => (runs[b].metrics!.totalMs < runs[a].metrics!.totalMs ? b : a))
+      : null;
+  const priced = measured.filter((id) => runs[id].metrics!.costUsd !== undefined);
+  const cheapest =
+    !hiddenNames && !loading && priced.length >= 2
+      ? priced.reduce((a, b) => (runs[b].metrics!.costUsd! < runs[a].metrics!.costUsd! ? b : a))
+      : null;
+  const doneCount = runOrder.filter((id) => runs[id] && runs[id].status !== "streaming").length;
 
   /** Moves keys held in this browser into the account, then clears them locally. */
   async function moveBrowserKeys() {
@@ -376,352 +427,386 @@ export default function Compare({
   }
 
   return (
-    <div style={{ padding: 20, maxWidth: 1100, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 12 }}>Compare Models</h1>
+    <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pt-5 pb-10 sm:px-6">
+      <h1 className="sr-only">Compare models</h1>
+      <CommandMenu
+        newComparison={newComparison}
+        focusPrompt={() => promptRef.current?.focus()}
+        toggleBlind={() => setBlind((b) => !b)}
+        openSettings={() => setSettingsOpen(true)}
+        openKeys={() => setKeysOpen(true)}
+        exportCsv={hasResults && !hiddenNames && !loading ? exportCsv : undefined}
+        toggleModel={toggleModel}
+        selectedModels={selectedModels}
+        signedIn={signedIn}
+      />
+      <div aria-live="polite" className="sr-only">
+        {hasResults ? (loading ? `${doneCount} of ${runOrder.length} answers finished` : "All answers finished") : ""}
+      </div>
 
       {showMigration && (
         <div
           role="status"
-          style={{
-            marginBottom: 16,
-            padding: 12,
-            borderRadius: 8,
-            border: "1px solid #bfdbfe",
-            background: "#eff6ff",
-            fontSize: 14,
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm"
         >
-          <span style={{ flex: 1, minWidth: 240 }}>
+          <span className="min-w-60 flex-1">
             This browser has API keys saved locally. Move them to your account so they&apos;re encrypted and work on
             any device?
-            {migration.error && <span style={{ display: "block", color: "#b91c1c" }}>{migration.error}</span>}
+            {migration.error && <span className="mt-1 block text-danger">{migration.error}</span>}
           </span>
-          <button
-            type="button"
-            onClick={moveBrowserKeys}
-            disabled={migration.busy}
-            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer" }}
-          >
+          <Button type="button" size="sm" onClick={moveBrowserKeys} disabled={migration.busy}>
             {migration.busy ? "Moving…" : "Move to account"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMigration({ busy: false, dismissed: true })}
-            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer" }}
-          >
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setMigration({ busy: false, dismissed: true })}>
             Not now
-          </button>
+          </Button>
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-        <div style={{ flex: 2 }}>
-          <div
-            style={{
-              padding: 16,
-              borderRadius: 8,
-              border: "1px solid #e6e6e6",
-              background: "#fff",
-              boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
+      {/* Composer: prompt, models and run options. Sheets sit outside the form so their own forms never submit it. */}
+      <section aria-label="Composer" className="rounded-2xl border bg-card shadow-window">
+        <form onSubmit={handleSubmit}>
+          <Label htmlFor="prompt" className="sr-only">
+            Prompt
+          </Label>
+          <textarea
+            id="prompt"
+            ref={promptRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleSubmit();
+              }
             }}
-          >
-            <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: 12 }}>
-                <label htmlFor="prompt" style={{ display: "block", fontWeight: 600 }}>
-                  Prompt
-                </label>
-                <textarea
-                  id="prompt"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  rows={6}
-                  style={{
-                    width: "100%",
-                    marginTop: 8,
-                    padding: 10,
-                    borderRadius: 6,
-                    border: "1px solid #ddd",
-                    fontFamily: "inherit",
-                  }}
-                  placeholder="Write your prompt here..."
-                />
-                <TemplatePicker signedIn={signedIn} prompt={prompt} onLoad={setPrompt} />
-              </div>
+            rows={4}
+            maxLength={MAX_PROMPT_CHARS}
+            placeholder="Ask every model the same thing…"
+            className="block max-h-[40vh] min-h-28 w-full resize-y rounded-t-2xl bg-transparent px-4 pt-4 pb-2 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground/80"
+          />
 
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ fontWeight: 600 }}>Models</label>
-                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  {MODELS.map((m) => (
-                    <label
-                      key={m.id}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "6px 10px",
-                        borderRadius: 8,
-                        border: selectedModels.includes(m.id) ? "1px solid #2563eb" : "1px solid #e6e6e6",
-                        background: selectedModels.includes(m.id) ? "#eef2ff" : "#fafafa",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedModels.includes(m.id)}
-                        onChange={() => toggleModel(m.id)}
-                      />
-                      <span style={{ fontSize: 14 }}>{m.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <SettingsPanel value={settings} onChange={changeSettings} modelIds={orderedSelection} />
-
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, marginBottom: 8 }}>
-                <input type="checkbox" checked={blind} onChange={(e) => setBlind(e.target.checked)} />
-                <span>
-                  <strong>Blind mode</strong>: hide model names until you pick the best answer
-                </span>
-              </label>
-
-              <div style={{ marginTop: 8, display: "flex", gap: 12, alignItems: "center" }}>
-                <button
-                  type="submit"
-                  disabled={loading || selectedModels.length === 0 || !prompt.trim() || !hasKeys || settingsInvalid}
-                  style={{
-                    padding: "10px 16px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: loading ? "#94a3b8" : "#2563eb",
-                    color: "#fff",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontWeight: 600,
-                  }}
-                >
-                  {loading ? "Comparing..." : "Submit"}
-                </button>
-
-                {loading && (
-                  <button
-                    type="button"
-                    onClick={handleStop}
-                    style={{
-                      padding: "10px 16px",
-                      borderRadius: 8,
-                      border: "1px solid #d1d5db",
-                      background: "#fff",
-                      color: "#111827",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Stop
-                  </button>
-                )}
-
-                {!hasKeys && (
-                  <div style={{ color: "#b91c1c", fontSize: 13 }}>
-                    API keys missing — open API Keys panel to the right.
-                  </div>
-                )}
-              </div>
-            </form>
-          </div>
-          <div style={{ marginTop: 16 }}>
-            {error && (
-              <div style={{ color: "red", padding: 8, borderRadius: 6, background: "#fff0f0" }}>{error}</div>
-            )}
-
-            {/* Hidden during a blind vote: the saved page shows model names. */}
-            {savedId && (!blindRun || blindRun.revealed) && (
-              <div style={{ fontSize: 13, color: "#374151" }}>
-                Saved to your history ·{" "}
-                <Link href={`/c/${savedId}`} style={{ color: "#2563eb" }}>
-                  Open
-                </Link>
-              </div>
-            )}
-            {saveNotice && <div style={{ fontSize: 13, color: "#b45309" }}>{saveNotice}</div>}
-            {authEnabled && !signedIn && runOrder.length > 0 && (
-              <div style={{ fontSize: 13, color: "#6b7280" }}>Sign in to save comparisons to your history.</div>
-            )}
-
-            {runOrder.length === 0 && (
-              <div style={{ marginTop: 12, color: "#6b7280" }}>No results yet. Submit a prompt to compare.</div>
-            )}
-
-            {awaitingVote && (
-              <div
-                role="group"
-                aria-label="Blind vote"
-                style={{
-                  marginTop: 12,
-                  padding: 12,
-                  borderRadius: 8,
-                  border: "1px solid #c7d2fe",
-                  background: "#eef2ff",
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  fontSize: 14,
-                }}
-              >
-                {answeredIds.length >= 2 ? (
-                  <>
-                    <span style={{ flex: 1, minWidth: 220 }}>Which answer is best? Names are revealed after you vote.</span>
-                    <button type="button" onClick={() => vote(null)} style={voteButton}>
-                      It&apos;s a tie
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span style={{ flex: 1, minWidth: 220 }}>Fewer than two models answered, so there&apos;s nothing to vote on.</span>
-                    <button type="button" onClick={() => setBlindRun({ revealed: true })} style={voteButton}>
-                      Reveal names
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-            {blindRun?.revealed && (
-              <div role="status" style={{ marginTop: 12, fontSize: 14 }}>
-                {blindRun.pick === undefined
-                  ? "Names revealed."
-                  : blindRun.pick === null
-                    ? "You called it a tie."
-                    : `You picked ${findModel(blindRun.pick)?.label ?? blindRun.pick}.`}
-                {savedId && blindRun.pick !== undefined && !blindRun.saveError && " Saved to your leaderboard."}
-                {blindRun.saveError && <span style={{ color: "#b91c1c" }}> {blindRun.saveError}</span>}
-              </div>
-            )}
-
-            {/* Not during a blind vote: the file names the models. */}
-            {!loading && runOrder.length > 0 && !hiddenNames && (
-              <button
-                type="button"
-                onClick={exportCsv}
-                style={{ marginTop: 12, padding: "6px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer" }}
-              >
-                Export CSV
-              </button>
-            )}
-            {/* The judge scores the first prompt's answers, so it's offered before any follow-up. */}
-            {!loading && turnPrompts.length <= 1 && finishedAnswers.length >= 2 && judgeOptions.length > 0 && (
-              <JudgePanel
-                prompt={runPrompt}
-                answers={finishedAnswers}
-                judgeOptions={judgeOptions}
-                apiKeyFor={(modelId) => {
-                  const model = findModel(modelId);
-                  return accountMode || !model ? undefined : keys[model.provider];
-                }}
-                comparisonId={savedId}
-                displayName={displayName}
-                verdict={verdict}
-                onVerdict={setVerdict}
-              />
-            )}
-
-            <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-              {runOrder.map((id, index) => {
-                if (!runs[id]) return null;
-                const hidden = blindRun !== null && !blindRun.revealed;
-                const name = findModel(id)?.label ?? id;
+          <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3">
+            <fieldset className="flex flex-wrap items-center gap-1.5">
+              <legend className="sr-only">Models</legend>
+              {MODELS.map((m) => {
+                const checked = selectedModels.includes(m.id);
+                const keyed = hasProviderKey(m.provider);
                 return (
-                  <Model
-                    key={id}
-                    label={hidden ? blindLabel(index) : name}
-                    subtitle={blindRun?.revealed ? `was ${blindLabel(index)}` : undefined}
-                    badge={blindRun?.revealed && blindRun.pick === id ? "Your pick" : undefined}
-                    anonymous={hidden}
-                    state={runs[id]}
-                    earlierTurns={earlier.map((states, t) => ({
-                      prompt: turnPrompts[t],
-                      state: states[id] ?? { status: "error", text: "", error: "No answer" },
-                    }))}
-                    currentPrompt={turnPrompts.at(-1)}
-                    footer={
-                      <>
-                        {earlier.length === 0 && verdict && verdictLine(verdict, id, displayName) && (
-                          <div style={{ marginTop: 8, fontSize: 13, color: "#374151" }}>
-                            <strong>Judge:</strong> {verdictLine(verdict, id, displayName)}
-                          </div>
-                        )}
-                        {awaitingVote && answeredIds.length >= 2 && runs[id].status === "done" && (
-                          <button type="button" onClick={() => vote(id)} style={{ ...voteButton, marginTop: 10 }}>
-                            Pick {blindLabel(index)}
-                          </button>
-                        )}
-                      </>
-                    }
-                  />
+                  <label
+                    key={m.id}
+                    className={cn(
+                      "relative inline-flex h-8 cursor-pointer items-center gap-2 rounded-full border px-3 text-[13px] transition-colors select-none",
+                      "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+                      checked ? "border-foreground/20 bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    title={keyed ? undefined : `No ${PROVIDERS[m.provider].label} key yet`}
+                  >
+                    {/* Invisible but covering the chip, so a click anywhere toggles the real checkbox. */}
+                    <input
+                      type="checkbox"
+                      className="absolute inset-0 z-10 size-full cursor-pointer appearance-none rounded-full opacity-0"
+                      checked={checked}
+                      onChange={() => toggleModel(m.id)}
+                    />
+                    <span
+                      aria-hidden
+                      className={cn("size-2 rounded-full transition-opacity", !checked && "opacity-40")}
+                      style={{ background: modelColor(m.id) }}
+                    />
+                    {m.label}
+                    {!keyed && <span className="text-[11px] text-muted-foreground/70">no key</span>}
+                  </label>
                 );
               })}
-            </div>
+            </fieldset>
+          </div>
 
-            {!loading && runOrder.length > 0 && !hiddenNames && turnPrompts.length < MAX_TURNS && (
-              <div
-                role="group"
-                aria-label="Follow-up"
-                style={{ marginTop: 16, padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff" }}
-              >
-                <label htmlFor="follow-up" style={{ display: "block", fontWeight: 600, fontSize: 14 }}>
-                  Follow-up{" "}
-                  <span style={{ fontWeight: 400, color: "#6b7280" }}>
-                    (turn {turnPrompts.length + 1} of {MAX_TURNS}; each model continues its own conversation)
-                  </span>
-                </label>
-                <textarea
-                  id="follow-up"
-                  rows={3}
-                  value={followUp}
-                  onChange={(e) => setFollowUp(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault();
-                      sendFollowUp();
-                    }
-                  }}
-                  placeholder="Ask every model a follow-up question…"
-                  style={{ width: "100%", marginTop: 6, padding: 10, borderRadius: 6, border: "1px solid #ddd", fontFamily: "inherit" }}
-                />
-                <button
-                  type="button"
-                  onClick={sendFollowUp}
-                  disabled={!followUp.trim() || followUp.length > MAX_PROMPT_CHARS}
-                  style={{ marginTop: 8, padding: "8px 14px", borderRadius: 8, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontWeight: 600 }}
-                >
-                  Send follow-up
-                </button>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-t px-3 py-2.5">
+            <TemplatePicker signedIn={signedIn} prompt={prompt} onLoad={setPrompt} />
+            <div className="flex items-center gap-2 pl-1">
+              <Checkbox id="blind" checked={blind} onCheckedChange={(v) => setBlind(v === true)} />
+              <Label htmlFor="blind" className="cursor-pointer text-[13px] font-normal text-muted-foreground">
+                <EyeOff className="size-3.5" aria-hidden />
+                <span>
+                  <span className="text-foreground">Blind mode</span>: hide model names until you pick the best answer
+                </span>
+              </Label>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="hidden items-center gap-1 text-xs text-muted-foreground md:flex">
+                <Kbd>⌘</Kbd>
+                <Kbd>↵</Kbd>
+              </span>
+              {loading ? (
+                <Button type="button" variant="secondary" onClick={handleStop}>
+                  <Square className="size-3.5 fill-current" /> Stop
+                </Button>
+              ) : null}
+              <Button type="submit" disabled={!canSubmit} aria-label={loading ? "Comparing…" : "Compare"}>
+                {loading ? "Comparing…" : "Compare"}
+                {!loading && <ArrowUp className="size-4" />}
+              </Button>
+            </div>
+          </div>
+        </form>
+
+        {/* Outside the form: these open sheets whose forms must not submit the comparison. */}
+        <div className="flex flex-wrap items-center gap-1 border-t px-2 py-1.5">
+          <SettingsPanel
+            value={settings}
+            onChange={changeSettings}
+            modelIds={orderedSelection}
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            className="max-w-[60%]"
+          />
+          <KeysSheet
+            open={keysOpen}
+            onOpenChange={setKeysOpen}
+            count={keyCount}
+            accountKeys={savedKeys}
+            onAccountKeysChange={setSavedKeys}
+            onBrowserKeysChange={setKeys}
+          />
+          <span className="ml-auto hidden pr-2 text-xs text-muted-foreground sm:block">
+            <Kbd>⌘K</Kbd> for all actions
+          </span>
+        </div>
+      </section>
+
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+
+      {!hasResults && (
+        <section aria-label="Getting started" className="grid gap-3 pt-6 text-center">
+          {!hasKeys ? (
+            <div className="mx-auto max-w-md space-y-3">
+              <h2 className="text-lg font-semibold tracking-tight">Add a key to start comparing</h2>
+              <p className="text-sm text-muted-foreground">
+                Each model runs on your own provider key, so you pay providers directly and nothing is marked up. One
+                key is enough to try it.
+              </p>
+              <Button type="button" variant="secondary" onClick={() => setKeysOpen(true)}>
+                Add API keys
+              </Button>
+            </div>
+          ) : (
+            <div className="mx-auto max-w-2xl space-y-3">
+              <h2 className="text-sm font-medium text-muted-foreground">Try a prompt</h2>
+              <div className="flex flex-col gap-2">
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => {
+                      setPrompt(ex);
+                      promptRef.current?.focus();
+                    }}
+                    className="rounded-lg border px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    {ex}
+                  </button>
+                ))}
               </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {hasResults && (
+        <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <p className="min-w-0 flex-1 truncate text-muted-foreground">
+            {turnPrompts.length > 1 ? `Turn ${turnPrompts.length} · ` : ""}
+            <span className="text-foreground">{turnPrompts.at(-1)}</span>
+          </p>
+          {/* Hidden during a blind vote: the saved page shows model names. */}
+          {savedId && (!blindRun || blindRun.revealed) && (
+            <span className="text-xs text-muted-foreground">
+              Saved to your history ·{" "}
+              <Link href={`/c/${savedId}`} className="text-foreground underline">
+                Open
+              </Link>
+            </span>
+          )}
+          {authEnabled && !signedIn && <span className="text-xs text-muted-foreground">Sign in to save comparisons to your history.</span>}
+          <div className="flex items-center gap-1">
+            {!loading && !hiddenNames && (
+              <DiffDialog
+                answers={finishedAnswers.map((a) => ({ id: a.modelId, label: displayName(a.modelId), text: a.text }))}
+              />
             )}
+            {/* Not during a blind vote: the file names the models. */}
+            {!loading && !hiddenNames && (
+              <Button type="button" variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={exportCsv}>
+                <Download className="size-4" /> Export CSV
+              </Button>
+            )}
+            <Button type="button" variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={newComparison}>
+              <Plus className="size-4" /> New comparison
+            </Button>
           </div>
         </div>
-        <div style={{ width: 320 }}>
-          <div
-            style={{
-              position: "sticky",
-              top: 20,
-              padding: 12,
-              borderRadius: 8,
-              border: "1px solid #e6e6e6",
-              background: "#fff",
+      )}
+      {saveNotice && <p className="text-sm text-warning">{saveNotice}</p>}
+
+      {awaitingVote && (
+        <div
+          role="group"
+          aria-label="Blind vote"
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm"
+        >
+          {answeredIds.length >= 2 ? (
+            <>
+              <span className="min-w-56 flex-1">Which answer is best? Names are revealed after you vote.</span>
+              <Button type="button" size="sm" variant="secondary" onClick={() => vote(null)}>
+                It&apos;s a tie
+              </Button>
+            </>
+          ) : (
+            <>
+              <span className="min-w-56 flex-1">Fewer than two models answered, so there&apos;s nothing to vote on.</span>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setBlindRun({ revealed: true })}>
+                Reveal names
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+      {blindRun?.revealed && (
+        <p role="status" className="text-sm">
+          {blindRun.pick === undefined
+            ? "Names revealed."
+            : blindRun.pick === null
+              ? "You called it a tie."
+              : `You picked ${findModel(blindRun.pick)?.label ?? blindRun.pick}.`}
+          {savedId && blindRun.pick !== undefined && !blindRun.saveError && " Saved to your leaderboard."}
+          {blindRun.saveError && <span className="text-danger"> {blindRun.saveError}</span>}
+        </p>
+      )}
+
+      {/* The judge scores the first prompt's answers, so it's offered before any follow-up. */}
+      {!loading && turnPrompts.length <= 1 && finishedAnswers.length >= 2 && judgeOptions.length > 0 && (
+        <JudgePanel
+          prompt={runPrompt}
+          answers={finishedAnswers}
+          judgeOptions={judgeOptions}
+          apiKeyFor={(modelId) => {
+            const model = findModel(modelId);
+            return accountMode || !model ? undefined : keys[model.provider];
+          }}
+          comparisonId={savedId}
+          displayName={displayName}
+          verdict={verdict}
+          onVerdict={setVerdict}
+        />
+      )}
+
+      {hasResults && (
+        <div
+          className={cn(
+            "grid snap-x snap-mandatory auto-cols-[88%] grid-flow-col gap-3 overflow-x-auto pb-2",
+            "sm:auto-cols-[minmax(320px,1fr)] sm:snap-none"
+          )}
+        >
+          {runOrder.map((id, index) => {
+            const state = runs[id];
+            if (!state) return null;
+            const name = findModel(id)?.label ?? id;
+            const badges = [
+              ...(blindRun?.revealed && blindRun.pick === id ? ["Your pick"] : []),
+              ...(fastest === id ? ["Fastest"] : []),
+              ...(cheapest === id ? ["Cheapest"] : []),
+            ];
+            const canRetry = !loading && (state.status === "error" || state.status === "stopped");
+            return (
+              <Model
+                key={id}
+                variant="column"
+                className="h-[min(68vh,720px)] snap-start"
+                label={hiddenNames ? blindLabel(index) : name}
+                subtitle={blindRun?.revealed ? `was ${blindLabel(index)}` : undefined}
+                badges={badges}
+                color={modelColor(id)}
+                anonymous={hiddenNames}
+                state={state}
+                actions={
+                  <>
+                    {state.text && <CopyButton text={state.text} label="Copy answer" />}
+                    {canRetry && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon-xs" onClick={() => retryModel(id)} aria-label="Retry">
+                            <RotateCcw />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Retry</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </>
+                }
+                earlierTurns={earlier.map((states, t) => ({
+                  prompt: turnPrompts[t],
+                  state: states[id] ?? { status: "error", text: "", error: "No answer" },
+                }))}
+                currentPrompt={turnPrompts.at(-1)}
+                footer={
+                  <>
+                    {earlier.length === 0 && verdict && verdictLine(verdict, id, displayName) && (
+                      <p className="mt-3 border-t pt-2 text-[13px] text-muted-foreground">
+                        <strong className="font-medium text-foreground">Judge:</strong> {verdictLine(verdict, id, displayName)}
+                      </p>
+                    )}
+                    {awaitingVote && answeredIds.length >= 2 && state.status === "done" && (
+                      <Button type="button" variant="secondary" size="sm" className="mt-3" onClick={() => vote(id)}>
+                        Pick {blindLabel(index)}
+                      </Button>
+                    )}
+                  </>
+                }
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {inConversation && (
+        <form
+          role="group"
+          aria-label="Follow-up"
+          onSubmit={sendFollowUp}
+          className="mx-auto w-full max-w-3xl rounded-2xl border bg-card shadow-window"
+        >
+          <textarea
+            id="follow-up"
+            aria-label="Follow-up"
+            aria-describedby="follow-up-hint"
+            rows={2}
+            value={followUp}
+            maxLength={MAX_PROMPT_CHARS}
+            onChange={(e) => setFollowUp(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                sendFollowUp();
+              }
             }}
-          >
-            {accountMode ? (
-              <AccountKeyManager keys={savedKeys} onChange={setSavedKeys} />
-            ) : (
-              <ApiManager onChange={setKeys} />
-            )}
+            placeholder="Ask every model a follow-up question…"
+            className="block w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground/80"
+          />
+          <div className="flex items-center gap-2 px-3 pb-2.5">
+            <span id="follow-up-hint" className="text-xs text-muted-foreground">
+              turn {turnPrompts.length + 1} of {MAX_TURNS}; each model continues its own conversation
+            </span>
+            <Button type="submit" size="sm" className="ml-auto" disabled={!followUp.trim()}>
+              Send follow-up <ArrowUp className="size-4" />
+            </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </form>
+      )}
+    </main>
   );
 }

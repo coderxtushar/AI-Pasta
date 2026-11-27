@@ -16,7 +16,7 @@ async function onlyMockModels(page: Page) {
 }
 
 test("batch fills the template for each input and exports CSV", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await saveBrowserKey(page, "Qwen", "sk-e2e-qwen");
   await saveBrowserKey(page, "DeepSeek", "sk-e2e-deepseek");
 
@@ -48,7 +48,7 @@ test("batch fills the template for each input and exports CSV", async ({ page })
 });
 
 test("Stop ends a batch and marks unfinished answers", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await saveBrowserKey(page, "Qwen", "sk-e2e-qwen");
   await page.goto("/batch");
   await onlyMockModels(page);
@@ -63,7 +63,7 @@ test("Stop ends a batch and marks unfinished answers", async ({ page }) => {
 
 test("signed-in batches save each prompt to history", async ({ page, context }) => {
   await signIn(context, E2E.ownerToken);
-  await page.goto("/");
+  await page.goto("/app");
   await saveAccountKey(page, "Qwen", "sk-e2e-qwen-account");
   await page.goto("/batch");
   await onlyMockModels(page);
@@ -81,13 +81,13 @@ test("signed-in batches save each prompt to history", async ({ page, context }) 
 
 test("comparisons export CSV live and from their saved page", async ({ page, context, browser }) => {
   await signIn(context, E2E.ownerToken);
-  await page.goto("/");
+  await page.goto("/app");
   await saveAccountKey(page, "Qwen", "sk-e2e-qwen-account");
   for (const label of ["GPT-5.4 Mini", "Claude Sonnet 5.5", "Gemini Flash", "DeepSeek Chat", "GPT-OSS 120B (Groq)"]) {
     await page.getByRole("checkbox", { name: label }).uncheck();
   }
   await page.locator("#prompt").fill("echo: csv please");
-  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
   await expect(modelCard(page, "Qwen Plus").getByText("You said: echo: csv please")).toBeVisible();
 
   const [live] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Export CSV" }).click()]);

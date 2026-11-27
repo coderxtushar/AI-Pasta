@@ -11,7 +11,7 @@ async function runQwenAndDeepSeek(page: Page, prompt: string, { blind = false } 
   }
   if (blind) await page.getByRole("checkbox", { name: /Blind mode/ }).check();
   await page.locator("#prompt").fill(prompt);
-  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
   await expect(page.getByText("Hello from the mock!")).toBeVisible();
   await expect(page.getByText("Hi from the second mock!")).toBeVisible();
 }
@@ -19,7 +19,7 @@ async function runQwenAndDeepSeek(page: Page, prompt: string, { blind = false } 
 const judgePanel = (page: Page) => page.getByRole("region", { name: "AI judge" });
 
 test("a judge scores the answers and explains its pick", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await saveBrowserKey(page, "Qwen", "sk-e2e-qwen");
   await saveBrowserKey(page, "DeepSeek", "sk-e2e-deepseek");
   await runQwenAndDeepSeek(page, "judge me");
@@ -36,7 +36,7 @@ test("a judge scores the answers and explains its pick", async ({ page }) => {
 });
 
 test("in blind mode the verdict uses the anonymous labels until the vote", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await saveBrowserKey(page, "Qwen", "sk-e2e-qwen");
   await saveBrowserKey(page, "DeepSeek", "sk-e2e-deepseek");
   await runQwenAndDeepSeek(page, "blind judge", { blind: true });
@@ -53,7 +53,7 @@ test("in blind mode the verdict uses the anonymous labels until the vote", async
 
 test("signed-in verdicts are saved with the comparison", async ({ page, context }) => {
   await signIn(context, E2E.ownerToken);
-  await page.goto("/");
+  await page.goto("/app");
   await saveAccountKey(page, "Qwen", "sk-e2e-qwen-account");
   await saveAccountKey(page, "DeepSeek", "sk-e2e-deepseek-account");
   await runQwenAndDeepSeek(page, "saved judge");

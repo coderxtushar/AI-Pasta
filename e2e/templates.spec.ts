@@ -11,7 +11,7 @@ async function saveTemplate(page: Page, name: string, prompt: string) {
 }
 
 test("browser templates: save, reload, load, replace by name, delete", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await saveTemplate(page, "Greeting", "Say hello to {{input}}");
   await page.reload();
 
@@ -35,20 +35,20 @@ test("account templates follow the user, and only that user", async ({ browser }
   const owner = await browser.newContext();
   await signIn(owner, E2E.ownerToken);
   const page = await owner.newPage();
-  await page.goto("/");
+  await page.goto("/app");
   await saveTemplate(page, "Owner template", "Summarize {{input}} in one line.");
 
   const otherDevice = await browser.newContext();
   await signIn(otherDevice, E2E.ownerToken);
   const page2 = await otherDevice.newPage();
-  await page2.goto("/");
+  await page2.goto("/app");
   await page2.getByLabel("Templates").selectOption({ label: "Owner template" });
   await expect(page2.locator("#prompt")).toHaveValue("Summarize {{input}} in one line.");
 
   const otherUser = await browser.newContext();
   await signIn(otherUser, E2E.otherToken);
   const page3 = await otherUser.newPage();
-  await page3.goto("/");
+  await page3.goto("/app");
   await expect(page3.getByLabel("Templates").locator("option", { hasText: "Owner template" })).toHaveCount(0);
 
   await Promise.all([owner.close(), otherDevice.close(), otherUser.close()]);

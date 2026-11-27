@@ -1,6 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import { findModel } from "../library/models";
+import { Loader2, Scale } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_RUBRIC, MAX_RUBRIC_CHARS, verdictSummary, type JudgeVerdict } from "../library/judge";
 
 type Props = {
@@ -19,14 +22,6 @@ type Props = {
   onVerdict: (verdict: JudgeVerdict) => void;
 };
 
-const button: React.CSSProperties = {
-  padding: "6px 12px",
-  borderRadius: 8,
-  border: "1px solid #d1d5db",
-  background: "#fff",
-  cursor: "pointer",
-  fontWeight: 600,
-};
 
 /** Asks one model to score the other models' answers against a rubric. */
 export default function JudgePanel({
@@ -75,18 +70,16 @@ export default function JudgePanel({
   const v = verdict ? verdictSummary(verdict, displayName) : null;
 
   return (
-    <section
-      aria-label="AI judge"
-      style={{ marginTop: 12, padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", background: "#fafafa" }}
-    >
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 14 }}>
-        <strong>AI judge</strong>
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+    <section aria-label="AI judge" className="rounded-xl border bg-card p-3.5">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Scale className="size-4 text-muted-foreground" aria-hidden />
+        <h2 className="font-semibold">AI judge</h2>
+        <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           Judge model
           <select
             value={selected}
             onChange={(e) => setJudgeModel(e.target.value)}
-            style={{ padding: 6, borderRadius: 6, border: "1px solid #d1d5db" }}
+            className="h-8 rounded-md border bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {judgeOptions.map((id) => (
               <option key={id} value={id}>
@@ -95,44 +88,43 @@ export default function JudgePanel({
             ))}
           </select>
         </label>
-        <button type="button" onClick={run} disabled={busy} style={button}>
+        <Button type="button" size="sm" variant="secondary" onClick={run} disabled={busy}>
+          {busy && <Loader2 className="animate-spin" />}
           {busy ? "Judging…" : verdict ? "Judge again" : "Judge answers"}
-        </button>
+        </Button>
       </div>
 
-      <details style={{ marginTop: 8, fontSize: 13 }}>
-        <summary style={{ cursor: "pointer" }}>Rubric</summary>
-        <textarea
+      <details className="mt-2 text-xs text-muted-foreground">
+        <summary className="cursor-pointer select-none hover:text-foreground">Rubric</summary>
+        <Textarea
           aria-label="Rubric"
           rows={3}
           maxLength={MAX_RUBRIC_CHARS}
           value={rubric}
           onChange={(e) => setRubric(e.target.value)}
-          style={{ width: "100%", marginTop: 6, padding: 8, borderRadius: 6, border: "1px solid #d1d5db", fontFamily: "inherit" }}
+          className="mt-2 text-sm text-foreground"
         />
       </details>
 
       {selfJudging && (
-        <div style={{ marginTop: 6, fontSize: 12, color: "#b45309" }}>
-          This judge also wrote one of the answers, so it may favor its own.
-        </div>
+        <p className="mt-2 text-xs text-warning">This judge also wrote one of the answers, so it may favor its own.</p>
       )}
       {error && (
-        <div role="alert" style={{ marginTop: 6, fontSize: 13, color: "#b91c1c" }}>
+        <p role="alert" className="mt-2 text-sm text-danger">
           {error}
-        </div>
+        </p>
       )}
       {v && verdict && (
-        <div role="status" style={{ marginTop: 8, fontSize: 14 }}>
-          <div>
-            <strong>{v.judge}</strong> {v.pick}. {v.summary}
-          </div>
-          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+        <div role="status" className="mt-3 border-t pt-3 text-sm">
+          <p>
+            <strong className="font-semibold">{v.judge}</strong> {v.pick}. {v.summary}
+          </p>
+          <p className="mt-1 font-mono text-[11.5px] text-muted-foreground tabular">
             {(verdict.metrics.totalMs / 1000).toFixed(2)}s
             {verdict.metrics.inputTokens !== undefined &&
               ` · ${verdict.metrics.inputTokens} in / ${verdict.metrics.outputTokens} out tokens`}
             {` · ${verdict.metrics.costUsd !== undefined ? `$${verdict.metrics.costUsd.toFixed(5)}` : "cost —"}`}
-          </div>
+          </p>
         </div>
       )}
     </section>

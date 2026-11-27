@@ -2,19 +2,15 @@
 import React, { useState } from "react";
 import { PROVIDERS, PROVIDER_IDS, type ProviderId, type SavedKeyInfo } from "../library/providers";
 import { removeKeyFromAccount, saveKeyToAccount, upsertKey } from "../library/accountKeys";
+import { Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type Props = {
   keys: SavedKeyInfo[];
   onChange: (keys: SavedKeyInfo[]) => void;
 };
 
-const smallButton: React.CSSProperties = {
-  border: "none",
-  borderRadius: 6,
-  padding: "6px 10px",
-  cursor: "pointer",
-  fontSize: 13,
-};
 
 /** Manages keys saved (encrypted) to the signed-in user's account. */
 export default function AccountKeyManager({ keys, onChange }: Props) {
@@ -58,77 +54,73 @@ export default function AccountKeyManager({ keys, onChange }: Props) {
   }
 
   return (
-    <div className="p-4 border rounded-xl space-y-3" style={{ background: "#fff" }}>
-      <h3 style={{ margin: 0, fontWeight: 700 }}>API Keys</h3>
-
-      <div style={{ display: "grid", gap: 10 }}>
+    <div className="space-y-4">
+      <div className="grid gap-3">
         {PROVIDER_IDS.map((id) => {
           const key = saved.get(id);
           const showInput = !key || editing[id];
+          const label = PROVIDERS[id].label;
           return (
-            <div key={id}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{PROVIDERS[id].label}</div>
+            <div key={id} className="grid gap-1.5">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{label}</span>
+                {key && !editing[id] && (
+                  <span className="inline-flex items-center gap-1 text-success">
+                    <Lock className="size-3" aria-hidden /> saved
+                  </span>
+                )}
+              </div>
               {showInput ? (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     save(id);
                   }}
-                  style={{ display: "flex", gap: 6 }}
+                  className="flex gap-1.5"
                 >
-                  <input
+                  <Input
                     type="password"
                     autoComplete="off"
-                    aria-label={`${PROVIDERS[id].label} key`}
+                    spellCheck={false}
+                    aria-label={`${label} key`}
                     placeholder={key ? "New key" : "Paste key"}
                     value={drafts[id] ?? ""}
                     onChange={(e) => setDrafts((d) => ({ ...d, [id]: e.target.value }))}
-                    className="border p-2 rounded"
-                    style={{ flex: 1, minWidth: 0 }}
+                    className="min-w-0 flex-1 font-mono text-[13px]"
                   />
-                  <button
-                    type="submit"
-                    disabled={busy === id || !drafts[id]?.trim()}
-                    className="bg-blue-500 text-white"
-                    style={smallButton}
-                  >
+                  <Button type="submit" size="sm" disabled={busy === id || !drafts[id]?.trim()}>
                     Save
-                  </button>
+                  </Button>
                   {key && (
-                    <button
-                      type="button"
-                      onClick={() => setEditing((e) => ({ ...e, [id]: false }))}
-                      className="bg-gray-200 text-gray-800"
-                      style={smallButton}
-                    >
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setEditing((e) => ({ ...e, [id]: false }))}>
                       Cancel
-                    </button>
+                    </Button>
                   )}
                 </form>
               ) : (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <span style={{ flex: 1, fontFamily: "var(--font-geist-mono)", fontSize: 13, color: "#374151" }}>
-                    ••••{key!.last4}
-                  </span>
-                  <button
+                <div className="flex h-9 items-center gap-1.5 rounded-md border bg-subtle px-3">
+                  <span className="flex-1 font-mono text-[13px] text-muted-foreground">••••{key!.last4}</span>
+                  <Button
                     type="button"
+                    size="xs"
+                    variant="ghost"
                     onClick={() => setEditing((e) => ({ ...e, [id]: true }))}
-                    aria-label={`Replace ${PROVIDERS[id].label} key`}
-                    className="bg-gray-200 text-gray-800"
-                    style={smallButton}
+                    aria-label={`Replace ${label} key`}
                   >
                     Replace
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    size="xs"
+                    variant="ghost"
                     disabled={busy === id}
                     onClick={() => remove(id)}
-                    aria-label={`Remove ${PROVIDERS[id].label} key`}
-                    className="bg-gray-200"
-                    style={{ ...smallButton, color: "#b91c1c" }}
+                    aria-label={`Remove ${label} key`}
+                    className="text-danger hover:text-danger"
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -137,13 +129,15 @@ export default function AccountKeyManager({ keys, onChange }: Props) {
       </div>
 
       {message && (
-        <div style={{ fontSize: 13, color: message.error ? "#b91c1c" : "#374151" }}>{message.text}</div>
+        <p role="status" className={message.error ? "text-sm text-danger" : "text-sm text-muted-foreground"}>
+          {message.text}
+        </p>
       )}
 
-      <div style={{ fontSize: 12, color: "#6b7280" }}>
+      <p className="text-xs leading-relaxed text-muted-foreground">
         Keys are encrypted and stored in your account, so they work on any device. Once saved, a key is never
         shown again.
-      </div>
+      </p>
     </div>
   );
 }

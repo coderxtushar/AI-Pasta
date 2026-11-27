@@ -11,7 +11,7 @@ async function startConversation(page: Page, prompt: string) {
     await page.getByRole("checkbox", { name: label }).uncheck();
   }
   await page.locator("#prompt").fill(prompt);
-  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
   await expect(modelCard(page, "Qwen Plus").getByText("Hello from the mock!")).toBeVisible();
   await expect(modelCard(page, "DeepSeek Chat").getByText("Hi from the second mock!")).toBeVisible();
 }
@@ -22,7 +22,7 @@ async function followUp(page: Page, text: string) {
 }
 
 test("follow-ups continue each model's own conversation", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await saveBrowserKey(page, "Qwen", "sk-e2e-qwen");
   await saveBrowserKey(page, "DeepSeek", "sk-e2e-deepseek");
   await startConversation(page, "hi");
@@ -57,7 +57,7 @@ test("follow-ups continue each model's own conversation", async ({ page }) => {
 });
 
 test("after a failed turn, the next message still reaches the model", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await saveBrowserKey(page, "Qwen", "sk-e2e-qwen");
   await saveBrowserKey(page, "DeepSeek", "sk-e2e-deepseek");
   await startConversation(page, "hi");
@@ -72,7 +72,7 @@ test("after a failed turn, the next message still reaches the model", async ({ p
 
 test("signed-in conversations are saved turn by turn", async ({ page, context }) => {
   await signIn(context, E2E.ownerToken);
-  await page.goto("/");
+  await page.goto("/app");
   await saveAccountKey(page, "Qwen", "sk-e2e-qwen-account");
   await saveAccountKey(page, "DeepSeek", "sk-e2e-deepseek-account");
   await startConversation(page, "saved conversation");

@@ -15,12 +15,12 @@ async function startBlindRun(page: Page, prompt: string) {
   }
   await page.getByRole("checkbox", { name: /Blind mode/ }).check();
   await page.locator("#prompt").fill(prompt);
-  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
   for (const answer of ANSWERS) await expect(page.getByText(answer)).toBeVisible();
 }
 
 test("anonymous blind run hides names until the vote", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await saveBrowserKey(page, "Qwen", "sk-e2e-qwen");
   await saveBrowserKey(page, "DeepSeek", "sk-e2e-deepseek");
   await startBlindRun(page, "blind anonymous");
@@ -43,7 +43,7 @@ let winner = "";
 
 test("signed-in vote is saved, revealed and counted", async ({ page, context }) => {
   await signIn(context, E2E.ownerToken);
-  await page.goto("/");
+  await page.goto("/app");
   await saveAccountKey(page, "Qwen", "sk-e2e-qwen-account");
   await saveAccountKey(page, "DeepSeek", "sk-e2e-deepseek-account");
   await startBlindRun(page, "blind signed in");
@@ -51,7 +51,7 @@ test("signed-in vote is saved, revealed and counted", async ({ page, context }) 
   // No link to the saved page before voting: it shows model names.
   await expect(page.getByRole("link", { name: "Open" })).toHaveCount(0);
 
-  const answerA = await modelCard(page, "Model A").locator("pre").innerText();
+  const answerA = await modelCard(page, "Model A").locator(".answer-prose").last().innerText();
   winner = NAMES[ANSWERS.indexOf(answerA)];
   await page.getByRole("button", { name: "Pick Model A" }).click();
 
@@ -74,7 +74,7 @@ test("each blind comparison takes one vote", async ({ page, context }) => {
 
 test("the leaderboard reflects wins and ties", async ({ page, context }) => {
   await signIn(context, E2E.ownerToken);
-  await page.goto("/");
+  await page.goto("/app");
   await startBlindRun(page, "blind tie");
   await page.getByRole("button", { name: "It's a tie" }).click();
   await expect(page.getByText("You called it a tie. Saved to your leaderboard.")).toBeVisible();

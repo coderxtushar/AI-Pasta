@@ -3,12 +3,12 @@ import { lastProviderAuth, modelCard, saveBrowserKey } from "./helpers";
 
 test.describe("comparing without an account", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/app");
   });
 
   test("streams an answer with metrics using a browser key", async ({ page, request }) => {
     await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeVisible();
-    const submit = page.getByRole("button", { name: "Submit" });
+    const submit = page.getByRole("button", { name: "Compare", exact: true });
     await expect(submit).toBeDisabled();
 
     await saveBrowserKey(page, "Qwen", "sk-e2e-browser-key");
@@ -26,7 +26,7 @@ test.describe("comparing without an account", () => {
   test("Stop keeps the partial answer", async ({ page }) => {
     await saveBrowserKey(page, "Qwen", "sk-e2e-browser-key");
     await page.locator("#prompt").fill("slow");
-    await page.getByRole("button", { name: "Submit" }).click();
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
 
     const qwen = modelCard(page, "Qwen Plus");
     await expect(qwen.getByText(/tick tick/)).toBeVisible();
@@ -34,15 +34,15 @@ test.describe("comparing without an account", () => {
     await expect(qwen.getByText("Stopped")).toBeVisible();
     await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);
 
-    const partial = await qwen.locator("pre").innerText();
+    const partial = await qwen.locator(".answer-prose").last().innerText();
     await page.waitForTimeout(800);
-    expect(await qwen.locator("pre").innerText()).toBe(partial);
+    expect(await qwen.locator(".answer-prose").last().innerText()).toBe(partial);
   });
 
   test("explains a rejected key", async ({ page }) => {
     await saveBrowserKey(page, "Qwen", "sk-e2e-wrong-key");
     await page.locator("#prompt").fill("fail");
-    await page.getByRole("button", { name: "Submit" }).click();
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
     await expect(modelCard(page, "Qwen Plus").getByText(/Qwen rejected the API key/)).toBeVisible();
   });
 

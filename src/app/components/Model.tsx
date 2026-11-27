@@ -1,5 +1,9 @@
 "use client";
 import React from "react";
+import { AlertTriangle, Info } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AnswerMarkdown } from "@/components/workspace/answer-markdown";
 import type { GenerateMetrics } from "../library/stream";
 import type { RunState } from "../library/generateClient";
 
@@ -10,67 +14,41 @@ type ModelProps = {
   state: RunState;
   /** Smaller text next to the label, e.g. "was Model B" after a blind reveal. */
   subtitle?: string;
-  /** Short highlight, e.g. "Your pick". */
+  /** Short highlights, e.g. "Your pick", "Fastest". */
   badge?: string;
+  badges?: string[];
+  /** The model's colour dot (a CSS colour); grey when anonymous. */
+  color?: string;
   /**
    * Blind mode before the vote: hide everything that could identify the model
    * (latency, tokens, cost, provider notes and provider-specific errors).
    */
   anonymous?: boolean;
+  /** Buttons in the header (copy, retry). */
+  actions?: React.ReactNode;
   /** Extra content under the answer (vote button, judge verdict). */
   footer?: React.ReactNode;
   /** Earlier turns of a multi-turn conversation, oldest first (turn 0 is the first prompt). */
   earlierTurns?: { prompt: string; state: RunState }[];
   /** The user message this `state` answers; shown when there are earlier turns. */
   currentPrompt?: string;
+  /** "column": fixed-height scrolling body for the workspace grid; "card": natural height. */
+  variant?: "column" | "card";
+  className?: string;
 };
 
-function UserMessage({ text }: { text: string }) {
-  return (
-    <div
-      style={{
-        marginTop: 10,
-        padding: "6px 10px",
-        borderRadius: 8,
-        background: "#f3f4f6",
-        fontSize: 14,
-        whiteSpace: "pre-wrap",
-      }}
-    >
-      <strong>You:</strong> {text}
-    </div>
-  );
-}
-
-/** A finished earlier turn, kept compact. */
-function EarlierAnswer({ state }: { state: RunState }) {
-  return (
-    <>
-      {state.text && <pre style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{state.text}</pre>}
-      {state.status !== "done" && (
-        <div style={{ marginTop: 6, fontSize: 13, color: "#b91c1c" }}>
-          {state.status === "stopped" ? "Stopped." : `Error: ${state.error ?? "no answer"}`}
-        </div>
-      )}
-      {state.metrics && (
-        <div style={{ marginTop: 4, fontSize: 12, color: "#6b7280" }}>{formatMetrics(state.metrics)}</div>
-      )}
-    </>
-  );
-}
-
-const STATUS_STYLE: Record<RunState["status"], { text: string; color: string }> = {
-  streaming: { text: "Streaming…", color: "#2563eb" },
-  done: { text: "Done", color: "#16a34a" },
-  error: { text: "Error", color: "#b91c1c" },
-  stopped: { text: "Stopped", color: "#6b7280" },
+const STATUS: Record<RunState["status"], { text: string; tone: string }> = {
+  streaming: { text: "Streaming…", tone: "text-brand" },
+  done: { text: "Done", tone: "text-success" },
+  error: { text: "Error", tone: "text-danger" },
+  stopped: { text: "Stopped", tone: "text-muted-foreground" },
 };
 
 function seconds(ms: number) {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
-function formatMetrics(m: GenerateMetrics): string {
+export function formatMetrics(m: GenerateMetrics): string {
   const parts: string[] = [];
   if (m.ttftMs !== null) parts.push(`first token ${seconds(m.ttftMs)}`);
   parts.push(`total ${seconds(m.totalMs)}`);
@@ -83,72 +61,135 @@ function formatMetrics(m: GenerateMetrics): string {
   return parts.join(" · ");
 }
 
+function UserMessage({ text }: { text: string }) {
+  return (
+    <div className="my-3 rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap">
+      <span className="font-medium">You:</span> {text}
+    </div>
+  );
+}
+
+function MetricsLine({ metrics }: { metrics: GenerateMetrics }) {
+  return <div className="font-mono text-[11.5px] leading-5 text-muted-foreground tabular">{formatMetrics(metrics)}</div>;
+}
+
+function Notes({ notes }: { notes?: string[] }) {
+  if (!notes?.length) return null;
+  return (
+    <ul className="mt-1 space-y-0.5">
+      {notes.map((note) => (
+        <li key={note} className="flex gap-1.5 text-xs text-warning">
+          <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          <span>Note: {note}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A finished earlier turn, kept compact. */
+function EarlierAnswer({ state }: { state: RunState }) {
+  return (
+    <div>
+      {state.text && <AnswerMarkdown text={state.text} streaming={false} />}
+      {state.status !== "done" && (
+        <div className="mt-1 text-xs text-danger">
+          {state.status === "stopped" ? "Stopped." : `Error: ${state.error ?? "no answer"}`}
+        </div>
+      )}
+      {state.metrics && <MetricsLine metrics={state.metrics} />}
+    </div>
+  );
+}
+
+/** One model's answer: header, the conversation so far, the current answer, metrics. */
 const Model: React.FC<ModelProps> = ({
   label,
   state,
   subtitle,
   badge,
+  badges = [],
+  color,
   anonymous,
+  actions,
   footer,
   earlierTurns = [],
   currentPrompt,
+  variant = "card",
+  className,
 }) => {
   const status =
     state.status === "streaming" && state.waitingSec
-      ? { text: `Rate limited, retrying in ${state.waitingSec}s…`, color: "#b45309" }
-      : STATUS_STYLE[state.status];
+      ? { text: `Rate limited, retrying in ${state.waitingSec}s…`, tone: "text-warning" }
+      : STATUS[state.status];
+  const allBadges = [...(badge ? [badge] : []), ...badges];
+  const streaming = state.status === "streaming";
+  const waitingForFirstToken = streaming && !state.text && !state.waitingSec;
+
   return (
-    <section aria-label={label} style={{ border: "1px solid #ddd", padding: 12, borderRadius: 6 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-        <h3 style={{ margin: 0 }}>
+    <section
+      aria-label={label}
+      aria-busy={streaming}
+      className={cn(
+        "flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground",
+        variant === "column" && "h-full",
+        className
+      )}
+    >
+      <header className="flex items-center gap-2 border-b px-3.5 py-2.5">
+        <span
+          aria-hidden
+          className="size-2.5 shrink-0 rounded-full"
+          style={{ background: anonymous || !color ? "var(--muted-foreground)" : color }}
+        />
+        <h3 className="min-w-0 truncate text-sm font-semibold">
           {label}
-          {subtitle && <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: "#6b7280" }}>{subtitle}</span>}
+          {subtitle && <span className="ml-2 text-xs font-normal text-muted-foreground">{subtitle}</span>}
         </h3>
-        <span style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-          {badge && (
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#166534",
-                background: "#dcfce7",
-                borderRadius: 999,
-                padding: "2px 8px",
-              }}
-            >
-              {badge}
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          {allBadges.map((b) => (
+            <span key={b} className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+              {b}
             </span>
-          )}
-          <span style={{ fontSize: 12, fontWeight: 600, color: status.color }}>{status.text}</span>
-        </span>
+          ))}
+          <span className={cn("text-xs font-medium", status.tone)}>{status.text}</span>
+          {actions}
+        </div>
+      </header>
+
+      <div className={cn("min-h-0 flex-1 px-3.5 py-3", variant === "column" && "overflow-y-auto")}>
+        {earlierTurns.map((t, i) => (
+          <div key={i} aria-label={`Turn ${i + 1}`} className="border-b border-dashed pb-3 mb-3 last:mb-0">
+            {i > 0 && <UserMessage text={t.prompt} />}
+            <EarlierAnswer state={t.state} />
+          </div>
+        ))}
+        {earlierTurns.length > 0 && currentPrompt && <UserMessage text={currentPrompt} />}
+
+        {waitingForFirstToken && (
+          <div className="space-y-2 py-1" aria-hidden>
+            <Skeleton className="h-3 w-11/12" />
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
+        )}
+        {state.text && <AnswerMarkdown text={state.text} streaming={streaming} />}
+
+        {state.status === "error" && state.error && (
+          <div className="mt-2 flex gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>{anonymous ? "This model's answer failed. Details appear after you vote." : `Error: ${state.error}`}</span>
+          </div>
+        )}
+        {footer}
       </div>
 
-      {earlierTurns.map((t, i) => (
-        <div key={i} aria-label={`Turn ${i + 1}`}>
-          {i > 0 && <UserMessage text={t.prompt} />}
-          <EarlierAnswer state={t.state} />
-        </div>
-      ))}
-      {earlierTurns.length > 0 && currentPrompt && <UserMessage text={currentPrompt} />}
-
-      {state.text && <pre style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{state.text}</pre>}
-
-      {state.status === "error" && state.error && (
-        <div style={{ marginTop: 8, color: "#b91c1c", fontSize: 14 }}>
-          {anonymous ? "This model's answer failed. Details appear after you vote." : `Error: ${state.error}`}
-        </div>
-      )}
-
       {!anonymous && state.metrics && (
-        <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>{formatMetrics(state.metrics)}</div>
+        <footer className="border-t bg-subtle px-3.5 py-2">
+          {state.metrics && <MetricsLine metrics={state.metrics} />}
+          <Notes notes={state.metrics?.notes} />
+        </footer>
       )}
-      {!anonymous &&
-        state.metrics?.notes?.map((note) => (
-        <div key={note} style={{ marginTop: 4, fontSize: 12, color: "#b45309" }}>
-          Note: {note}
-        </div>
-      ))}
-      {footer}
     </section>
   );
 };

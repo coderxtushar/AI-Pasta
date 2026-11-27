@@ -2,6 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { PROVIDERS, PROVIDER_IDS, type ApiKeys, type ProviderId } from "../library/providers";
 import { clearKeys, loadKeys, saveKeys } from "../library/keys";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Props = {
   /** Called with the current keys after a save or clear. */
@@ -43,47 +46,45 @@ export default function ApiKeyManager({ onChange }: Props) {
   };
 
   return (
-    <div className="p-4 border rounded-xl space-y-3" style={{ background: "#fff" }}>
-      <h3 style={{ margin: 0, fontWeight: 700 }}>API Keys</h3>
-
-      <div>
+    <div className="space-y-4">
+      <div className="grid gap-3">
         {PROVIDER_IDS.map((id) => (
-          <input
-            key={id}
-            type="password"
-            autoComplete="off"
-            placeholder={`${PROVIDERS[id].label} Key`}
-            value={keys[id] ?? ""}
-            onChange={(e) => update(id, e.target.value)}
-            className="border p-2 rounded w-full"
-            style={{ width: "100%", marginBottom: 8 }}
-          />
+          <div key={id} className="grid gap-1.5">
+            <Label htmlFor={`key-${id}`} className="text-xs text-muted-foreground">
+              {PROVIDERS[id].label}
+            </Label>
+            <Input
+              id={`key-${id}`}
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={`${PROVIDERS[id].label} Key`}
+              value={keys[id] ?? ""}
+              onChange={(e) => update(id, e.target.value)}
+              className="font-mono text-[13px]"
+            />
+          </div>
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        <button
-          onClick={save}
-          className="bg-blue-500 text-white px-3 py-1 rounded"
-          style={{ border: "none", cursor: "pointer" }}
-        >
+      <div className="flex items-center gap-2">
+        <Button type="button" size="sm" onClick={save}>
           Save
-        </button>
-        <button
-          onClick={clear}
-          className="bg-gray-200 text-gray-800 px-3 py-1 rounded"
-          style={{ border: "none", cursor: "pointer" }}
-        >
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={clear}>
           Clear Keys
-        </button>
+        </Button>
         {status && (
-          <div style={{ alignSelf: "center", color: "#374151", fontSize: 13 }}>{status}</div>
+          <span role="status" className="text-xs text-muted-foreground">
+            {status}
+          </span>
         )}
       </div>
 
-      <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>
-        Keys are stored in this browser&apos;s localStorage and sent with each comparison request.
-      </div>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Keys are stored in this browser&apos;s localStorage and sent only with the request for that
+        provider&apos;s model. Sign in to keep them encrypted in your account instead.
+      </p>
     </div>
   );
 }

@@ -6,6 +6,9 @@ import {
   browserTemplateStore,
   type Template,
 } from "../library/templates";
+import { BookmarkIcon, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type Props = {
   /** Signed-in users keep templates in their account; others in this browser. */
@@ -15,14 +18,6 @@ type Props = {
   onLoad: (prompt: string) => void;
 };
 
-const small: React.CSSProperties = {
-  padding: "4px 10px",
-  borderRadius: 6,
-  border: "1px solid #d1d5db",
-  background: "#fff",
-  cursor: "pointer",
-  fontSize: 13,
-};
 
 export default function TemplatePicker({ signedIn, prompt, onLoad }: Props) {
   const store = useMemo(() => (signedIn ? accountTemplateStore : browserTemplateStore), [signedIn]);
@@ -78,24 +73,30 @@ export default function TemplatePicker({ signedIn, prompt, onLoad }: Props) {
   }
 
   return (
-    <div style={{ display: "grid", gap: 6, marginTop: 8, fontSize: 13 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <select
-          aria-label="Templates"
-          value={selectedId}
-          onChange={(e) => load(e.target.value)}
-          style={{ padding: 5, borderRadius: 6, border: "1px solid #d1d5db", maxWidth: 260 }}
-        >
-          <option value="">{templates.length ? "Load a template…" : "No templates yet"}</option>
-          {templates.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-        <button
+    <div className="grid gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="relative">
+          <BookmarkIcon aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <select
+            aria-label="Templates"
+            value={selectedId}
+            onChange={(e) => load(e.target.value)}
+            className="h-8 max-w-56 appearance-none truncate rounded-md border bg-transparent pr-7 pl-8 text-xs text-foreground outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">{templates.length ? "Load a template…" : "No templates yet"}</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        </div>
+        <Button
           type="button"
-          style={small}
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs text-muted-foreground"
           disabled={!prompt.trim()}
           onClick={() => {
             setNaming(true);
@@ -103,21 +104,18 @@ export default function TemplatePicker({ signedIn, prompt, onLoad }: Props) {
           }}
         >
           Save as template
-        </button>
+        </Button>
         {selected && (
-          <button type="button" style={{ ...small, color: "#b91c1c" }} onClick={remove}>
+          <Button type="button" variant="ghost" size="sm" className="h-8 text-xs text-danger hover:text-danger" onClick={remove}>
             Delete template
-          </button>
+          </Button>
         )}
-        <span style={{ color: "#6b7280" }}>
-          Use <code>{"{{input}}"}</code> to fill in a value on the Batch page.
-        </span>
       </div>
 
       {naming && (
-        // Not a <form>: this sits inside the compare form, and nested forms aren't valid HTML.
-        <div role="group" aria-label="Save template" style={{ display: "flex", gap: 6 }}>
-          <input
+        // Not a <form>: this can sit inside the compare form, and nested forms aren't valid HTML.
+        <div role="group" aria-label="Save template" className="flex gap-1.5">
+          <Input
             aria-label="Template name"
             autoFocus
             value={name}
@@ -129,18 +127,23 @@ export default function TemplatePicker({ signedIn, prompt, onLoad }: Props) {
                 e.preventDefault(); // don't submit the surrounding compare form
                 save();
               }
+              if (e.key === "Escape") setNaming(false);
             }}
-            style={{ flex: 1, padding: 6, borderRadius: 6, border: "1px solid #d1d5db" }}
+            className="h-8 flex-1 text-sm"
           />
-          <button type="button" style={small} disabled={!name.trim()} onClick={save}>
+          <Button type="button" size="sm" disabled={!name.trim()} onClick={save}>
             Save
-          </button>
-          <button type="button" style={small} onClick={() => setNaming(false)}>
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setNaming(false)}>
             Cancel
-          </button>
+          </Button>
         </div>
       )}
-      {message && <div style={{ color: message.error ? "#b91c1c" : "#374151" }}>{message.text}</div>}
+      {message && (
+        <p role="status" className={message.error ? "text-xs text-danger" : "text-xs text-muted-foreground"}>
+          {message.text}
+        </p>
+      )}
     </div>
   );
 }
