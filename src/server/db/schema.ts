@@ -12,6 +12,7 @@ import {
 import type { AdapterAccountType } from "next-auth/adapters";
 import type { ProviderId } from "@/app/library/providers";
 import type { ComparisonSettings } from "@/app/library/settings";
+import type { JudgeVerdict } from "@/app/library/judge";
 
 // ---- Auth.js tables (shape required by @auth/drizzle-adapter) ----
 
@@ -138,4 +139,18 @@ export const votes = pgTable(
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("vote_user_idx").on(t.userId)]
+);
+
+// LLM-as-judge verdicts; one per judge model per comparison (re-judging replaces it).
+export const judgements = pgTable(
+  "judgement",
+  {
+    comparisonId: text("comparisonId")
+      .notNull()
+      .references(() => comparisons.id, { onDelete: "cascade" }),
+    judgeModelId: text("judgeModelId").notNull(),
+    verdict: jsonb("verdict").$type<JudgeVerdict>().notNull(),
+    createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.comparisonId, t.judgeModelId] })]
 );

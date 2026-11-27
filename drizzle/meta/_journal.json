@@ -29,6 +29,13 @@
       "when": 1795759647026,
       "tag": "0003_blind_votes",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795760070875,
+      "tag": "0004_judgements",
+      "breakpoints": true
     }
   ]
 }

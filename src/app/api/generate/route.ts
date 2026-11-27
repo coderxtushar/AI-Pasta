@@ -5,8 +5,7 @@ import { currentUserId } from "@/auth";
 import { MAX_PROMPT_CHARS } from "@/app/library/limits";
 import { estimateCostUsd, findModel } from "@/app/library/models";
 import type { GenerateMetrics, StreamEvent } from "@/app/library/stream";
-import { PROVIDERS } from "@/app/library/providers";
-import { getDecryptedApiKey, isKeyStorageEnabled, KeyDecryptionError } from "@/server/apiKeys";
+import { resolveApiKey } from "@/server/resolveKey";
 import { getOwnedComparison, saveResponse, type ResponseInput } from "@/server/comparisons";
 import { getLanguageModel } from "@/server/llm";
 import { describeProviderError } from "@/server/providerErrors";
@@ -114,26 +113,9 @@ export async function POST(req: NextRequest) {
   const needsUser = Boolean(comparisonId) || !parsed.data.apiKey;
   const userId = needsUser ? await currentUserId() : null;
 
-  let apiKey = parsed.data.apiKey;
-  const keySource = apiKey ? "browser" : "account";
-  if (!apiKey) {
-    const label = PROVIDERS[model.provider].label;
-    if (!userId || !isKeyStorageEnabled()) {
-      return NextResponse.json({ error: "`apiKey` is required." }, { status: 400 });
-    }
-    try {
-      apiKey = (await getDecryptedApiKey(userId, model.provider)) ?? undefined;
-    } catch (e) {
-      if (!(e instanceof KeyDecryptionError)) throw e;
-      return NextResponse.json(
-        { error: `Your saved ${label} key can't be read anymore. Please save it again.` },
-        { status: 409 }
-      );
-    }
-    if (!apiKey) {
-      return NextResponse.json({ error: `No ${label} API key saved to your account.` }, { status: 400 });
-    }
-  }
+  const key = await resolveApiKey(parsed.data.apiKey, userId, model.provider);
+  if ("error" in key) return NextResponse.json({ error: key.error }, { status: key.status });
+  const { apiKey, source: keySource } = key;
 
   let settings: GenerationSettings = cleanSettings(parsed.data.settings);
 

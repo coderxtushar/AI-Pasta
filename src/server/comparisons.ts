@@ -1,6 +1,7 @@
 import { and, desc, eq, ilike } from "drizzle-orm";
 import { db } from "./db";
-import { comparisons, responses, type ResponseStatus } from "./db/schema";
+import { comparisons, judgements, responses, type ResponseStatus } from "./db/schema";
+import type { JudgeVerdict } from "@/app/library/judge";
 import type { ComparisonSettings } from "@/app/library/settings";
 import { getVote } from "./votes";
 
@@ -38,11 +39,12 @@ export async function getComparisonForViewer(id: string, viewerId: string | null
   const isOwner = viewerId !== null && comparison.userId === viewerId;
   if (!isOwner && !comparison.isPublic) return null;
 
-  const [rows, vote] = await Promise.all([
+  const [rows, vote, verdicts] = await Promise.all([
     db.select().from(responses).where(eq(responses.comparisonId, id)),
     comparison.blind ? getVote(id) : Promise.resolve(null),
+    listJudgements(id),
   ]);
-  return { comparison, responses: rows, isOwner, vote };
+  return { comparison, responses: rows, isOwner, vote, verdicts };
 }
 
 export async function listComparisons(userId: string, search?: string, limit = 50) {
@@ -99,6 +101,34 @@ export async function saveResponse(comparisonId: string, modelId: string, r: Res
     .insert(responses)
     .values({ comparisonId, modelId, ...values })
     .onConflictDoUpdate({ target: [responses.comparisonId, responses.modelId], set: values });
+}
+
+/** Answers that finished, for judging. */
+export async function getFinishedAnswers(comparisonId: string): Promise<{ modelId: string; text: string }[]> {
+  const rows = await db
+    .select({ modelId: responses.modelId, text: responses.text })
+    .from(responses)
+    .where(and(eq(responses.comparisonId, comparisonId), eq(responses.status, "done")));
+  return rows.filter((r) => r.text.trim());
+}
+
+export async function saveJudgement(comparisonId: string, verdict: JudgeVerdict) {
+  await db
+    .insert(judgements)
+    .values({ comparisonId, judgeModelId: verdict.judgeModelId, verdict })
+    .onConflictDoUpdate({
+      target: [judgements.comparisonId, judgements.judgeModelId],
+      set: { verdict, createdAt: new Date() },
+    });
+}
+
+export async function listJudgements(comparisonId: string): Promise<JudgeVerdict[]> {
+  const rows = await db
+    .select({ verdict: judgements.verdict })
+    .from(judgements)
+    .where(eq(judgements.comparisonId, comparisonId))
+    .orderBy(judgements.createdAt);
+  return rows.map((r) => r.verdict);
 }
 
 function escapeLike(s: string) {
