@@ -8,7 +8,20 @@ with its latency, token count and cost.
 all models, and any model can override them. They're saved with each comparison and
 restored when you re-run it. Some models ignore some settings; for example, reasoning
 models like GPT-5.4 Mini and Claude Sonnet 5.5 don't accept temperature or top-p. When
-that happens, the answer card shows a note. Signed-in users get a saved history, can
+that happens, the answer card shows a note.
+
+**Blind mode** shuffles the answers and shows them as Model A, B, C. Anything that
+could identify a model stays hidden until you pick the best answer (or call a tie):
+latency, cost, provider notes, provider-specific errors. Signed-in votes feed a
+personal **Leaderboard** (`/leaderboard`) with each model's win rate. Each blind
+comparison takes one vote, because once the names are revealed a second vote
+wouldn't be blind.
+
+**AI judge**: pick any model you have a key for, optionally edit the rubric, and it
+scores every answer 1–10 with reasoning and picks a winner. The judge sees the answers
+shuffled and labelled only by letter, so neither names nor position can sway it. The
+app warns when the judge also wrote one of the answers, since models tend to favour
+their own. Verdicts are saved with signed-in comparisons and shown on their pages. Signed-in users get a saved history, can
 share any comparison with a public link, and can store their API keys encrypted in
 their account.
 
@@ -124,6 +137,7 @@ Deploy on Vercel (or anywhere that runs `next start`). Set these env vars:
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | **Yes, in production** | Shared rate limits across server instances |
 | `SENTRY_DSN` | Recommended | Server error tracking |
 | `NEXT_PUBLIC_SENTRY_DSN` | Optional | Browser error tracking |
+| `QWEN_BASE_URL`, `DEEPSEEK_BASE_URL` | Optional | Point a provider at another region or a proxy |
 | `AUTH_TRUST_HOST=true` | Outside Vercel | Lets Auth.js trust the request host |
 
 Run `npm run db:migrate` against the production database before each deploy that
