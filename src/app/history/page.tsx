@@ -88,6 +88,9 @@ export default async function HistoryPage({ searchParams }: Props) {
                 </time>
                 {c.isPublic && <span style={{ color: "#16a34a", fontWeight: 600 }}>Shared</span>}
                 {c.blind && <span style={{ color: "#4f46e5", fontWeight: 600 }}>Blind</span>}
+                {c.followUps.length > 0 && (
+                  <span style={{ color: "#374151", fontWeight: 600 }}>{c.followUps.length + 1} turns</span>
+                )}
                 <Link href={`/?from=${c.id}`} style={{ color: "#2563eb", marginLeft: "auto" }}>
                   Re-run
                 </Link>

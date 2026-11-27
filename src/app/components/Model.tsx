@@ -19,7 +19,45 @@ type ModelProps = {
   anonymous?: boolean;
   /** Extra content under the answer (vote button, judge verdict). */
   footer?: React.ReactNode;
+  /** Earlier turns of a multi-turn conversation, oldest first (turn 0 is the first prompt). */
+  earlierTurns?: { prompt: string; state: RunState }[];
+  /** The user message this `state` answers; shown when there are earlier turns. */
+  currentPrompt?: string;
 };
+
+function UserMessage({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: "6px 10px",
+        borderRadius: 8,
+        background: "#f3f4f6",
+        fontSize: 14,
+        whiteSpace: "pre-wrap",
+      }}
+    >
+      <strong>You:</strong> {text}
+    </div>
+  );
+}
+
+/** A finished earlier turn, kept compact. */
+function EarlierAnswer({ state }: { state: RunState }) {
+  return (
+    <>
+      {state.text && <pre style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{state.text}</pre>}
+      {state.status !== "done" && (
+        <div style={{ marginTop: 6, fontSize: 13, color: "#b91c1c" }}>
+          {state.status === "stopped" ? "Stopped." : `Error: ${state.error ?? "no answer"}`}
+        </div>
+      )}
+      {state.metrics && (
+        <div style={{ marginTop: 4, fontSize: 12, color: "#6b7280" }}>{formatMetrics(state.metrics)}</div>
+      )}
+    </>
+  );
+}
 
 const STATUS_STYLE: Record<RunState["status"], { text: string; color: string }> = {
   streaming: { text: "Streaming…", color: "#2563eb" },
@@ -45,7 +83,16 @@ function formatMetrics(m: GenerateMetrics): string {
   return parts.join(" · ");
 }
 
-const Model: React.FC<ModelProps> = ({ label, state, subtitle, badge, anonymous, footer }) => {
+const Model: React.FC<ModelProps> = ({
+  label,
+  state,
+  subtitle,
+  badge,
+  anonymous,
+  footer,
+  earlierTurns = [],
+  currentPrompt,
+}) => {
   const status =
     state.status === "streaming" && state.waitingSec
       ? { text: `Rate limited, retrying in ${state.waitingSec}s…`, color: "#b45309" }
@@ -75,6 +122,14 @@ const Model: React.FC<ModelProps> = ({ label, state, subtitle, badge, anonymous,
           <span style={{ fontSize: 12, fontWeight: 600, color: status.color }}>{status.text}</span>
         </span>
       </div>
+
+      {earlierTurns.map((t, i) => (
+        <div key={i} aria-label={`Turn ${i + 1}`}>
+          {i > 0 && <UserMessage text={t.prompt} />}
+          <EarlierAnswer state={t.state} />
+        </div>
+      ))}
+      {earlierTurns.length > 0 && currentPrompt && <UserMessage text={currentPrompt} />}
 
       {state.text && <pre style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{state.text}</pre>}
 

@@ -27,6 +27,7 @@ describe("resultRow", () => {
     const row = resultRow({
       prompt: "Q",
       input: "in",
+      turn: 2,
       modelId: "qwen-plus",
       state: {
         status: "done",
@@ -40,6 +41,7 @@ describe("resultRow", () => {
     expect(Object.keys(row)).toEqual([...RESULT_COLUMNS]);
     expect(row).toMatchObject({
       model_label: "Qwen Plus",
+      turn: 2,
       ttft_ms: 10,
       notes: "n1; n2",
       settings: "temperature 0.2",

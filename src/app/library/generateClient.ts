@@ -1,6 +1,7 @@
 // Browser side of /api/generate: one streamed answer from one model.
 import { readNdjson, type GenerateMetrics, type StreamEvent } from "./stream";
 import type { GenerationSettings } from "./settings";
+import type { ChatMessage } from "./conversation";
 
 export type RunState = {
   status: "streaming" | "done" | "error" | "stopped";
@@ -12,7 +13,9 @@ export type RunState = {
 };
 
 export type GenerateRequest = {
-  prompt: string;
+  /** A single prompt; or send `messages` for a multi-turn conversation. */
+  prompt?: string;
+  messages?: ChatMessage[];
   model: string;
   /** Browser-held key; omit to use the key saved to the signed-in account. */
   apiKey?: string;

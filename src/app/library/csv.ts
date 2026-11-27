@@ -26,6 +26,7 @@ export function toCsv(columns: readonly string[], rows: Record<string, CsvValue>
 export const RESULT_COLUMNS = [
   "prompt",
   "input",
+  "turn",
   "model",
   "model_label",
   "status",
@@ -46,6 +47,8 @@ export const RESULT_COLUMNS = [
 export type ResultRowInput = {
   prompt: string;
   input?: string;
+  /** 0 for the first prompt, 1+ for follow-ups. */
+  turn?: number;
   modelId: string;
   state: RunState;
   settings?: GenerationSettings;
@@ -59,6 +62,7 @@ export function resultRow(r: ResultRowInput): Record<string, CsvValue> {
   return {
     prompt: r.prompt,
     input: r.input,
+    turn: r.turn ?? 0,
     model: r.modelId,
     model_label: findModel(r.modelId)?.label ?? r.modelId,
     status: r.state.status,

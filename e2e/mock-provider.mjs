@@ -3,6 +3,7 @@
 //   prompt "fail" -> 401
 //   prompt "echo-settings" -> replies with the system prompt and sampling settings it received
 //   prompt "echo: …" -> replies "You said: echo: …" (the exact prompt it received)
+//   a follow-up (2+ user messages) -> 'Follow-up N: "<last message>" (<M> messages)'
 //   anything else -> streams "Hello from the mock!" (DeepSeek: "Hi from the second mock!")
 // Non-streaming requests are judge calls: it returns a JSON verdict that prefers
 // the answer containing "second", referring to answers by the judge's letters.
@@ -64,6 +65,8 @@ http
 
     const system = body.messages?.find((m) => m.role === "system")?.content ?? "none";
     const echo = `system=${system} temperature=${body.temperature ?? "none"} top_p=${body.top_p ?? "none"} max_tokens=${body.max_tokens ?? "none"}`;
+    const chat = (body.messages ?? []).filter((m) => m.role !== "system");
+    const userCount = chat.filter((m) => m.role === "user").length;
     const words =
       prompt === "slow"
         ? Array(50).fill("tick ")
@@ -71,6 +74,8 @@ http
           ? [echo]
           : prompt.startsWith("echo:")
             ? [`You said: ${prompt}`]
+            : userCount >= 2
+              ? [`Follow-up ${userCount - 1}: "${prompt}" (${chat.length} messages)`]
           : body.model === "deepseek-chat"
             ? ["Hi", " from", " the", " second", " mock!"]
             : ["Hello", " from", " the", " mock", "!"];

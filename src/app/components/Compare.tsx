@@ -15,6 +15,8 @@ import TemplatePicker from "./TemplatePicker";
 import { blindLabel, shuffle } from "../library/blind";
 import JudgePanel from "./JudgePanel";
 import { verdictLine, type JudgeVerdict } from "../library/judge";
+import { MAX_TURNS, buildHistory, type ChatMessage } from "../library/conversation";
+import { MAX_PROMPT_CHARS } from "../library/limits";
 import { RESULT_COLUMNS, downloadCsv, resultRow, toCsv } from "../library/csv";
 import {
   EMPTY_SETTINGS,
@@ -69,6 +71,11 @@ export default function Compare({
   const [verdict, setVerdict] = useState<JudgeVerdict | null>(null);
   // The prompt the current results answer (the textarea may have changed since).
   const [runPrompt, setRunPrompt] = useState("");
+  // Multi-turn: every user message so far (index = turn), the finished states of
+  // earlier turns, and the follow-up being typed. `runs` holds the current turn.
+  const [turnPrompts, setTurnPrompts] = useState<string[]>([]);
+  const [earlier, setEarlier] = useState<Record<string, RunState>[]>([]);
+  const [followUp, setFollowUp] = useState("");
   // The current run's blind state. Null when the run wasn't blind.
   const [blindRun, setBlindRun] = useState<{
     revealed: boolean;
@@ -129,7 +136,9 @@ export default function Compare({
     modelId: string,
     comparisonId: string | null,
     signal: AbortSignal,
-    update: (runId: number, modelId: string, fn: (prev: RunState) => RunState) => void
+    update: (runId: number, modelId: string, fn: (prev: RunState) => RunState) => void,
+    /** This model's conversation for a follow-up; the first turn sends `prompt` instead. */
+    messages?: ChatMessage[]
   ) {
     const model = findModel(modelId);
     if (!model) return;
@@ -143,7 +152,7 @@ export default function Compare({
     const apiKey = accountMode ? undefined : keys[model.provider];
     await streamGenerate(
       {
-        prompt,
+        ...(messages ? { messages } : { prompt }),
         model: modelId,
         apiKey,
         comparisonId: comparisonId ?? undefined,
@@ -173,6 +182,9 @@ export default function Compare({
     setBlindRun(blind ? { revealed: false } : null);
     setVerdict(null);
     setRunPrompt(prompt);
+    setTurnPrompts([prompt]);
+    setEarlier([]);
+    setFollowUp("");
     setRuns(Object.fromEntries(ids.map((id) => [id, { status: "streaming", text: "" }])));
 
     const update = (id: number, modelId: string, fn: (prev: RunState) => RunState) => {
@@ -240,17 +252,87 @@ export default function Compare({
     }
   }
 
+  /** Sends a follow-up to every model in the conversation, each with its own history. */
+  async function sendFollowUp() {
+    const content = followUp.trim();
+    if (!content || loading) return;
+    const turn = turnPrompts.length;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
+
+    const histories = Object.fromEntries(
+      runOrder.map((id) => [
+        id,
+        [
+          ...buildHistory(turnPrompts, [...earlier.map((states) => states[id]?.text), runs[id]?.text]),
+          { role: "user" as const, content },
+        ],
+      ])
+    );
+    setEarlier((prev) => [...prev, runs]);
+    setTurnPrompts((prev) => [...prev, content]);
+    setFollowUp("");
+    setRuns(Object.fromEntries(runOrder.map((id) => [id, { status: "streaming", text: "" }])));
+
+    // Saved conversations store the message first, so the answers can be saved under it.
+    let comparisonId = savedId;
+    if (savedId) {
+      try {
+        const res = await fetch(`/api/comparisons/${savedId}/turns`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ turn, content }),
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error ?? `Server error ${res.status}`);
+        }
+      } catch (err) {
+        if (controller.signal.aborted) {
+          // Stopped before any model started: nothing will update these cards.
+          setRuns((prev) =>
+            Object.fromEntries(Object.entries(prev).map(([id, r]) => [id, { ...r, status: "stopped" as const }]))
+          );
+          return;
+        }
+        comparisonId = null;
+        setSavedId(null);
+        setSaveNotice(
+          `Follow-up not saved (${err instanceof Error ? err.message : "unknown error"}), so the rest of this conversation won't be saved.`
+        );
+      }
+    }
+    if (runId !== runIdRef.current) return;
+
+    const update = (id: number, modelId: string, fn: (prev: RunState) => RunState) => {
+      if (id !== runIdRef.current) return;
+      setRuns((prev) => (prev[modelId] ? { ...prev, [modelId]: fn(prev[modelId]) } : prev));
+    };
+    await Promise.all(
+      runOrder.map((id) => runModel(runId, id, comparisonId, controller.signal, update, histories[id]))
+    );
+  }
+
   function exportCsv() {
     const judgeName = verdict ? findModel(verdict.judgeModelId)?.label ?? verdict.judgeModelId : "";
-    const rows = runOrder.map((id) =>
-      resultRow({
-        prompt: runPrompt,
-        modelId: id,
-        state: runs[id],
-        settings: effectiveSettings(settings, id),
-        judgeScores: verdict?.scores[id] ? [`${judgeName} ${verdict.scores[id].score}/10`] : undefined,
-        blindPick: blindRun?.pick === id,
-      })
+    const allTurns = [...earlier, runs];
+    const rows = allTurns.flatMap((states, turn) =>
+      runOrder.map((id) =>
+        resultRow({
+          prompt: turnPrompts[turn] ?? runPrompt,
+          turn,
+          modelId: id,
+          state: states[id] ?? { status: "error", text: "", error: "No answer" },
+          settings: effectiveSettings(settings, id),
+          judgeScores:
+            turn === 0 && verdict?.scores[id] ? [`${judgeName} ${verdict.scores[id].score}/10`] : undefined,
+          blindPick: turn === 0 && blindRun?.pick === id,
+        })
+      )
     );
     downloadCsv(`ai-pasta-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`, toCsv(RESULT_COLUMNS, rows));
   }
@@ -529,7 +611,8 @@ export default function Compare({
                 Export CSV
               </button>
             )}
-            {!loading && finishedAnswers.length >= 2 && judgeOptions.length > 0 && (
+            {/* The judge scores the first prompt's answers, so it's offered before any follow-up. */}
+            {!loading && turnPrompts.length <= 1 && finishedAnswers.length >= 2 && judgeOptions.length > 0 && (
               <JudgePanel
                 prompt={runPrompt}
                 answers={finishedAnswers}
@@ -558,9 +641,14 @@ export default function Compare({
                     badge={blindRun?.revealed && blindRun.pick === id ? "Your pick" : undefined}
                     anonymous={hidden}
                     state={runs[id]}
+                    earlierTurns={earlier.map((states, t) => ({
+                      prompt: turnPrompts[t],
+                      state: states[id] ?? { status: "error", text: "", error: "No answer" },
+                    }))}
+                    currentPrompt={turnPrompts.at(-1)}
                     footer={
                       <>
-                        {verdict && verdictLine(verdict, id, displayName) && (
+                        {earlier.length === 0 && verdict && verdictLine(verdict, id, displayName) && (
                           <div style={{ marginTop: 8, fontSize: 13, color: "#374151" }}>
                             <strong>Judge:</strong> {verdictLine(verdict, id, displayName)}
                           </div>
@@ -576,6 +664,43 @@ export default function Compare({
                 );
               })}
             </div>
+
+            {!loading && runOrder.length > 0 && !hiddenNames && turnPrompts.length < MAX_TURNS && (
+              <div
+                role="group"
+                aria-label="Follow-up"
+                style={{ marginTop: 16, padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff" }}
+              >
+                <label htmlFor="follow-up" style={{ display: "block", fontWeight: 600, fontSize: 14 }}>
+                  Follow-up{" "}
+                  <span style={{ fontWeight: 400, color: "#6b7280" }}>
+                    (turn {turnPrompts.length + 1} of {MAX_TURNS}; each model continues its own conversation)
+                  </span>
+                </label>
+                <textarea
+                  id="follow-up"
+                  rows={3}
+                  value={followUp}
+                  onChange={(e) => setFollowUp(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault();
+                      sendFollowUp();
+                    }
+                  }}
+                  placeholder="Ask every model a follow-up question…"
+                  style={{ width: "100%", marginTop: 6, padding: 10, borderRadius: 6, border: "1px solid #ddd", fontFamily: "inherit" }}
+                />
+                <button
+                  type="button"
+                  onClick={sendFollowUp}
+                  disabled={!followUp.trim() || followUp.length > MAX_PROMPT_CHARS}
+                  style={{ marginTop: 8, padding: "8px 14px", borderRadius: 8, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontWeight: 600 }}
+                >
+                  Send follow-up
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div style={{ width: 320 }}>

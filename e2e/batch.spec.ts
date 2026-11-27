@@ -39,12 +39,12 @@ test("batch fills the template for each input and exports CSV", async ({ page })
   expect(download.suggestedFilename()).toMatch(/^ai-pasta-batch-.*\.csv$/);
   const lines = await readCsv(download);
   expect(lines[0]).toBe(
-    "prompt,input,model,model_label,status,answer,error,ttft_ms,total_ms,input_tokens,output_tokens,reasoning_tokens,cost_usd,notes,settings,judge_scores,blind_pick"
+    "prompt,input,turn,model,model_label,status,answer,error,ttft_ms,total_ms,input_tokens,output_tokens,reasoning_tokens,cost_usd,notes,settings,judge_scores,blind_pick"
   );
   expect(lines).toHaveLength(5);
-  expect(lines[1]).toMatch(/^echo: review apple,apple,deepseek-chat,DeepSeek Chat,done,You said: echo: review apple,/);
+  expect(lines[1]).toMatch(/^echo: review apple,apple,0,deepseek-chat,DeepSeek Chat,done,You said: echo: review apple,/);
   // A cell that looks like a formula is neutralized so spreadsheets don't run it.
-  expect(lines[3]).toMatch(/^echo: review =1\+1,'=1\+1,deepseek-chat,/);
+  expect(lines[3]).toMatch(/^echo: review =1\+1,'=1\+1,0,deepseek-chat,/);
 });
 
 test("Stop ends a batch and marks unfinished answers", async ({ page }) => {
@@ -91,7 +91,7 @@ test("comparisons export CSV live and from their saved page", async ({ page, con
   await expect(modelCard(page, "Qwen Plus").getByText("You said: echo: csv please")).toBeVisible();
 
   const [live] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Export CSV" }).click()]);
-  expect((await readCsv(live))[1]).toMatch(/^echo: csv please,,qwen-plus,Qwen Plus,done,You said: echo: csv please,/);
+  expect((await readCsv(live))[1]).toMatch(/^echo: csv please,,0,qwen-plus,Qwen Plus,done,You said: echo: csv please,/);
 
   await page.getByRole("link", { name: "Open" }).click();
   const csvPath = (await page.getByRole("link", { name: "Export CSV" }).getAttribute("href"))!;

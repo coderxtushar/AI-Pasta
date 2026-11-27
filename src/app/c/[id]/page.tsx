@@ -8,6 +8,7 @@ import Model from "../../components/Model";
 import type { RunState } from "../../library/generateClient";
 import CopyLinkButton from "../../components/CopyLinkButton";
 import { findModel } from "../../library/models";
+import { userTurns } from "../../library/conversation";
 import { verdictLine, verdictSummary } from "../../library/judge";
 import { cleanSettings, describeSettings, type ComparisonSettings } from "../../library/settings";
 import { deleteComparisonAction, setShareAction } from "../../actions";
@@ -94,7 +95,12 @@ export default async function ComparisonPage({ params }: Props) {
   if (!found) notFound();
   const { comparison, responses, isOwner, vote, verdicts } = found;
   const nameOf = (id: string) => findModel(id)?.label ?? id;
-  const byModel = new Map(responses.map((r) => [r.modelId, r]));
+  const turns = userTurns(comparison);
+  const saved = new Map(responses.map((r) => [`${r.modelId}:${r.turn}`, r]));
+  const stateAt = (modelId: string, turn: number): RunState => {
+    const r = saved.get(`${modelId}:${turn}`);
+    return r ? toRunState(r) : { status: "error", text: "", error: "No response saved yet." };
+  };
 
   return (
     <main style={{ padding: 20, maxWidth: 1100, margin: "0 auto" }}>
@@ -140,7 +146,12 @@ export default async function ComparisonPage({ params }: Props) {
       <section
         style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, background: "#fafafa", marginBottom: 16 }}
       >
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>Prompt</div>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>
+          Prompt
+          {turns.length > 1 && (
+            <span style={{ fontWeight: 400, color: "#6b7280" }}> · conversation of {turns.length} turns</span>
+          )}
+        </div>
         <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontFamily: "inherit" }}>{comparison.prompt}</pre>
         <time
           dateTime={comparison.createdAt.toISOString()}
@@ -180,21 +191,24 @@ export default async function ComparisonPage({ params }: Props) {
 
       <div style={{ display: "grid", gap: 12 }}>
         {comparison.models.map((modelId) => {
-          const saved = byModel.get(modelId);
-          const state: RunState = saved
-            ? toRunState(saved)
-            : { status: "error", text: "", error: "No response saved yet." };
+          const last = turns.length - 1;
           return (
             <Model
               key={modelId}
               label={findModel(modelId)?.label ?? modelId}
-              state={state}
+              state={stateAt(modelId, last)}
+              earlierTurns={turns.slice(0, last).map((prompt, t) => ({ prompt, state: stateAt(modelId, t) }))}
+              currentPrompt={turns[last]}
               badge={vote?.winnerModelId === modelId ? "Blind pick" : undefined}
               footer={verdicts.map((v) => {
                 const line = verdictLine(v, modelId, nameOf);
                 return line ? (
                   <div key={v.judgeModelId} style={{ marginTop: 6, fontSize: 13, color: "#374151" }}>
-                    <strong>Judge ({findModel(v.judgeModelId)?.label ?? v.judgeModelId}):</strong> {line}
+                    <strong>
+                      Judge ({findModel(v.judgeModelId)?.label ?? v.judgeModelId}
+                      {turns.length > 1 ? ", first answer" : ""}):
+                    </strong>{" "}
+                    {line}
                   </div>
                 ) : null;
               })}
