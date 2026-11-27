@@ -2,7 +2,13 @@
 
 Compare answers from several AI models side by side. Type one prompt, pick models
 (OpenAI, Anthropic, Gemini, DeepSeek, Groq, Qwen), and watch each answer stream in
-with its latency, token count and cost. Signed-in users get a saved history, can
+with its latency, token count and cost.
+
+**Generation settings** (system prompt, temperature, top-p, max output tokens) apply to
+all models, and any model can override them. They're saved with each comparison and
+restored when you re-run it. Some models ignore some settings; for example, reasoning
+models like GPT-5.4 Mini and Claude Sonnet 5.5 don't accept temperature or top-p. When
+that happens, the answer card shows a note. Signed-in users get a saved history, can
 share any comparison with a public link, and can store their API keys encrypted in
 their account.
 
