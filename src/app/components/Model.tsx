@@ -1,13 +1,9 @@
 "use client";
 import React from "react";
 import type { GenerateMetrics } from "../library/stream";
+import type { RunState } from "../library/generateClient";
 
-export type RunState = {
-  status: "streaming" | "done" | "error" | "stopped";
-  text: string;
-  error?: string;
-  metrics?: GenerateMetrics;
-};
+export type { RunState };
 
 type ModelProps = {
   label: string;
@@ -50,7 +46,10 @@ function formatMetrics(m: GenerateMetrics): string {
 }
 
 const Model: React.FC<ModelProps> = ({ label, state, subtitle, badge, anonymous, footer }) => {
-  const status = STATUS_STYLE[state.status];
+  const status =
+    state.status === "streaming" && state.waitingSec
+      ? { text: `Rate limited, retrying in ${state.waitingSec}s…`, color: "#b45309" }
+      : STATUS_STYLE[state.status];
   return (
     <section aria-label={label} style={{ border: "1px solid #ddd", padding: 12, borderRadius: 6 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>

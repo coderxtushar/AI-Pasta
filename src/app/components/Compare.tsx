@@ -1,14 +1,14 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Model, { type RunState } from "./Model";
+import Model from "./Model";
+import { streamGenerate, type RunState } from "../library/generateClient";
 import ApiManager from "./ApiManager";
 import AccountKeyManager from "./AccountKeyManager";
 import { MODELS, findModel } from "../library/models";
 import { PROVIDERS, PROVIDER_IDS, type ApiKeys, type ProviderId, type SavedKeyInfo } from "../library/providers";
 import { clearKeys, hasAnyKey, loadKeys } from "../library/keys";
 import { saveKeyToAccount, upsertKey } from "../library/accountKeys";
-import { readNdjson, type StreamEvent } from "../library/stream";
 import SettingsPanel from "./SettingsPanel";
 import { blindLabel, shuffle } from "../library/blind";
 import JudgePanel from "./JudgePanel";
@@ -153,51 +153,16 @@ export default function Compare({
     }
     // In account mode the server looks up the saved key; the browser never has it.
     const apiKey = accountMode ? undefined : keys[model.provider];
-
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          model: modelId,
-          apiKey,
-          comparisonId: comparisonId ?? undefined,
-          settings: effectiveSettings(settings, modelId),
-        }),
-        signal,
-      });
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? `Server error ${res.status}`);
-      }
-
-      for await (const event of readNdjson<StreamEvent>(res.body)) {
-        if (event.type === "delta") {
-          update(runId, modelId, (p) => ({ ...p, text: p.text + event.text }));
-        } else if (event.type === "done") {
-          update(runId, modelId, (p) => ({ ...p, status: "done", metrics: event.metrics }));
-        } else {
-          update(runId, modelId, (p) => ({
-            ...p,
-            status: "error",
-            error: event.message,
-            metrics: event.metrics,
-          }));
-        }
-      }
-      // Stream closed without a final event (e.g. connection dropped).
-      update(runId, modelId, (p) =>
-        p.status === "streaming" ? { ...p, status: "error", error: "Connection closed early." } : p
-      );
-    } catch (err) {
-      if (signal.aborted) {
-        update(runId, modelId, (p) => (p.status === "streaming" ? { ...p, status: "stopped" } : p));
-      } else {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        update(runId, modelId, (p) => ({ ...p, status: "error", error: message }));
-      }
-    }
+    await streamGenerate(
+      {
+        prompt,
+        model: modelId,
+        apiKey,
+        comparisonId: comparisonId ?? undefined,
+        settings: effectiveSettings(settings, modelId),
+      },
+      { signal, onUpdate: (state) => update(runId, modelId, () => state) }
+    );
   }
 
   async function handleSubmit(e?: React.FormEvent) {
