@@ -13,7 +13,7 @@ import { verdictLine, verdictSummary } from "../../library/judge";
 import { cleanSettings, describeSettings, type ComparisonSettings } from "../../library/settings";
 import { deleteComparisonAction, setShareAction } from "../../actions";
 import { modelColor } from "../../library/modelColors";
-import { Download, Globe, Lock, RotateCcw, Scale, Trash2 } from "lucide-react";
+import { ChevronRight, Download, Globe, Lock, RotateCcw, Scale, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader, PageShell } from "@/components/site/page-header";
 import { CopyButton } from "@/components/workspace/copy-button";
@@ -78,7 +78,10 @@ function SettingsSummary({ settings }: { settings: ComparisonSettings | null }) 
       ))}
       {systemPrompts.map(([who, text]) => (
         <details key={who} className="group">
-          <summary className="cursor-pointer select-none hover:text-foreground">System prompt ({who})</summary>
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1 select-none hover:text-foreground [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden />
+            System prompt ({who})
+          </summary>
           <pre className="mt-1 rounded-md bg-muted px-3 py-2 font-sans text-[13px] whitespace-pre-wrap text-foreground">
             {text}
           </pre>
@@ -186,7 +189,7 @@ export default async function ComparisonPage({ params }: Props) {
         </section>
       )}
 
-      <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid items-start gap-3 md:grid-cols-[repeat(auto-fit,minmax(340px,1fr))]">
         {comparison.models.map((modelId) => {
           const last = turns.length - 1;
           return (

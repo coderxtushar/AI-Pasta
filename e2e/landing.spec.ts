@@ -18,6 +18,13 @@ test.describe("landing page", () => {
     await expect(page.locator("#prompt")).toBeVisible();
   });
 
+  test("pressing Enter on the landing page opens the workspace (the ↵ hint is real)", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/app$/);
+  });
+
   test("Try this prompt opens the workspace with the demo prompt", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "Try this prompt" }).click();

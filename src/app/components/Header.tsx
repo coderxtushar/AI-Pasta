@@ -47,7 +47,9 @@ export default async function Header() {
           ) : configured ? (
             <form action={signInAction}>
               <Button type="submit" variant="ghost" size="sm" aria-label="Sign in with Google">
-                Sign in<span className="hidden sm:inline"> with Google</span>
+                <span>
+                  Sign in<span className="hidden sm:inline"> with Google</span>
+                </span>
               </Button>
             </form>
           ) : null}

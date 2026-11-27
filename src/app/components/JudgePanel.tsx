@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { findModel } from "../library/models";
-import { Loader2, Scale } from "lucide-react";
+import { ChevronRight, Loader2, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_RUBRIC, MAX_RUBRIC_CHARS, verdictSummary, type JudgeVerdict } from "../library/judge";
@@ -94,8 +94,11 @@ export default function JudgePanel({
         </Button>
       </div>
 
-      <details className="mt-2 text-xs text-muted-foreground">
-        <summary className="cursor-pointer select-none hover:text-foreground">Rubric</summary>
+      <details className="group mt-2 text-xs text-muted-foreground">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 select-none hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden />
+          Rubric
+        </summary>
         <Textarea
           aria-label="Rubric"
           rows={3}

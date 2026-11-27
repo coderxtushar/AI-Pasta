@@ -688,23 +688,6 @@ export default function Compare({
         </p>
       )}
 
-      {/* The judge scores the first prompt's answers, so it's offered before any follow-up. */}
-      {!loading && turnPrompts.length <= 1 && finishedAnswers.length >= 2 && judgeOptions.length > 0 && (
-        <JudgePanel
-          prompt={runPrompt}
-          answers={finishedAnswers}
-          judgeOptions={judgeOptions}
-          apiKeyFor={(modelId) => {
-            const model = findModel(modelId);
-            return accountMode || !model ? undefined : keys[model.provider];
-          }}
-          comparisonId={savedId}
-          displayName={displayName}
-          verdict={verdict}
-          onVerdict={setVerdict}
-        />
-      )}
-
       {hasResults && (
         <div
           className={cn(
@@ -726,7 +709,7 @@ export default function Compare({
               <Model
                 key={id}
                 variant="column"
-                className="h-[min(68vh,720px)] snap-start"
+                className="max-h-[min(68vh,720px)] snap-start"
                 label={hiddenNames ? blindLabel(index) : name}
                 subtitle={blindRun?.revealed ? `was ${blindLabel(index)}` : undefined}
                 badges={badges}
@@ -771,6 +754,23 @@ export default function Compare({
             );
           })}
         </div>
+      )}
+
+      {/* The judge scores the first prompt's answers, so it's offered before any follow-up. */}
+      {!loading && turnPrompts.length <= 1 && finishedAnswers.length >= 2 && judgeOptions.length > 0 && (
+        <JudgePanel
+          prompt={runPrompt}
+          answers={finishedAnswers}
+          judgeOptions={judgeOptions}
+          apiKeyFor={(modelId) => {
+            const model = findModel(modelId);
+            return accountMode || !model ? undefined : keys[model.provider];
+          }}
+          comparisonId={savedId}
+          displayName={displayName}
+          verdict={verdict}
+          onVerdict={setVerdict}
+        />
       )}
 
       {inConversation && (

@@ -143,7 +143,7 @@ export function DemoReplay({ run }: { run: DemoRun }) {
       </div>
 
       {/* Prompt row */}
-      <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
+      <div className="flex flex-col items-start gap-3 border-b px-4 py-3 sm:flex-row sm:items-center">
         <p className="min-w-0 flex-1 text-sm">
           <span className="text-muted-foreground">Prompt · </span>
           {run.prompt}
@@ -164,7 +164,7 @@ export function DemoReplay({ run }: { run: DemoRun }) {
           <Model
             key={a.modelId}
             variant="column"
-            className="h-[300px] snap-start"
+            className="h-[280px] snap-start sm:h-[230px] lg:h-[200px]"
             label={findModel(a.modelId)?.label ?? a.modelId}
             color={modelColor(a.modelId)}
             state={states[i]}

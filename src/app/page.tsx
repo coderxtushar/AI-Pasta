@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Check, Download, Github, Lock, Scale } from "lucide-react";
+import { ArrowRight, Check, Download, Github, Lock, Plus, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { DemoReplay, type DemoRun } from "@/components/landing/demo-replay";
+import { EnterToStart } from "@/components/landing/enter-to-start";
+import Model from "./components/Model";
 import { formatMetrics } from "./library/format";
 import demo from "./library/demo-run.json";
 import { MODELS, findModel } from "./library/models";
@@ -78,26 +80,34 @@ function KeysVisual() {
   );
 }
 
+/** The last sentence of a demo answer, as a short excerpt. */
+function excerpt(modelId: string) {
+  const text = run.answers.find((a) => a.modelId === modelId)?.text ?? "";
+  const prose = text.split("```").at(-1)?.trim() ?? "";
+  return prose.split(/(?<=\.)\s/)[0] ?? prose;
+}
+
 function BlindVisual() {
+  const pair = [run.answers[0]?.modelId, run.answers[1]?.modelId].filter(Boolean) as string[];
   return (
     <Frame caption="Blind mode before the vote, and a personal leaderboard. Example values.">
       <div className="grid grid-cols-2 gap-2.5">
-        {["Model A", "Model B"].map((name, i) => (
-          <div key={name} className="rounded-lg border bg-background/50 p-3">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <span aria-hidden className="size-2 rounded-full bg-muted-foreground" />
-              {name}
-            </div>
-            <div aria-hidden className="mt-3 space-y-1.5">
-              <div className="h-2 w-11/12 rounded bg-muted" />
-              <div className="h-2 w-4/5 rounded bg-muted" />
-              <div className={i ? "h-2 w-1/2 rounded bg-muted" : "h-2 w-2/3 rounded bg-muted"} />
-            </div>
-            <div className="mt-3 inline-flex h-7 items-center rounded-md bg-secondary px-2.5 text-xs font-medium">
-              Pick {name}
-            </div>
-          </div>
-        ))}
+        {pair.map((id, i) => {
+          const name = i === 0 ? "Model A" : "Model B";
+          return (
+            <Model
+              key={id}
+              label={name}
+              anonymous
+              state={{ status: "done", text: excerpt(id) }}
+              footer={
+                <span className="mt-3 inline-flex h-7 items-center rounded-md bg-secondary px-2.5 text-xs font-medium">
+                  Pick {name}
+                </span>
+              }
+            />
+          );
+        })}
       </div>
       <div className="mt-3 divide-y rounded-lg border text-[13px]">
         {[
@@ -228,13 +238,13 @@ export default async function Landing({ searchParams }: Props) {
   return (
     <main className="overflow-x-clip">
       {/* Hero */}
-      <section className="relative mx-auto max-w-[1200px] px-4 pt-16 sm:px-6 sm:pt-24">
+      <section className="relative mx-auto max-w-[1200px] px-4 pt-12 sm:px-6 sm:pt-14">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 -top-24 -z-10 mx-auto h-[460px] max-w-4xl"
           style={{
             background:
-              "radial-gradient(closest-side, color-mix(in oklch, var(--brand) 12%, transparent), transparent)",
+              "radial-gradient(closest-side, color-mix(in oklch, var(--foreground) 5%, transparent), transparent)",
           }}
         />
         <div className="mx-auto max-w-3xl text-center">
@@ -242,13 +252,14 @@ export default async function Landing({ searchParams }: Props) {
             <span className="sm:block">Same prompt. Every model.</span> <span className="sm:block">Real numbers.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-balance text-muted-foreground sm:text-lg">
-            Send one prompt to GPT, Claude, Gemini, DeepSeek, Groq and Qwen at once. Compare the answers side by side,
-            with latency, tokens and cost, using your own API keys.
+            One prompt to GPT, Claude, Gemini, DeepSeek, Groq and Qwen at once: answers side by side, with latency
+            and cost, on your own API keys.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg" className="h-11 px-5 text-[15px]">
               <Link href="/app">
-                Start comparing <ArrowRight className="size-4" />
+                Start comparing
+                <Kbd className="bg-primary-foreground/10 text-primary-foreground">↵</Kbd>
               </Link>
             </Button>
             <Button asChild size="lg" variant="ghost" className="h-11 px-4 text-[15px] text-muted-foreground">
@@ -260,7 +271,8 @@ export default async function Landing({ searchParams }: Props) {
           <p className="mt-4 text-xs text-muted-foreground">No signup. One API key is enough.</p>
         </div>
 
-        <div className="mt-14 sm:mt-16">
+        <div className="mt-10">
+          <EnterToStart />
           <DemoReplay run={run} />
         </div>
       </section>
@@ -335,11 +347,9 @@ export default async function Landing({ searchParams }: Props) {
           <div className="mt-5 divide-y rounded-xl border">
             {FAQ.map(({ q, a }) => (
               <details key={q} className="group px-4 py-3.5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium select-none">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium select-none [&::-webkit-details-marker]:hidden">
                   {q}
-                  <span aria-hidden className="text-muted-foreground transition-transform group-open:rotate-45">
-                    +
-                  </span>
+                  <Plus aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-45" />
                 </summary>
                 <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{a}</p>
               </details>

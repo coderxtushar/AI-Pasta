@@ -59,8 +59,8 @@ function MetricsLine({ metrics }: { metrics: GenerateMetrics }) {
   return (
     <div className="font-mono text-[11.5px] leading-5 text-muted-foreground tabular">
       {parts.map((part, i) => (
-        <span key={i} className="whitespace-nowrap">
-          {part}
+        <span key={i}>
+          <span className="whitespace-nowrap">{part}</span>
           {i < parts.length - 1 && " · "}
         </span>
       ))}
@@ -127,7 +127,6 @@ const Model: React.FC<ModelProps> = ({
       aria-busy={streaming}
       className={cn(
         "flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground",
-        variant === "column" && "h-full",
         className
       )}
     >
@@ -143,7 +142,11 @@ const Model: React.FC<ModelProps> = ({
         </h3>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           {allBadges.map((b) => (
-            <span key={b} className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+            <span
+              key={b}
+              title={b === "Cheapest" ? "Cheapest of the models with a known list price" : undefined}
+              className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success"
+            >
               {b}
             </span>
           ))}

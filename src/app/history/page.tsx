@@ -96,7 +96,7 @@ export default async function HistoryPage({ searchParams }: Props) {
                 </Button>
                 <form action={deleteComparisonAction}>
                   <input type="hidden" name="id" value={c.id} />
-                  <Button type="submit" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-danger hover:text-danger">
+                  <Button type="submit" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-danger">
                     <Trash2 className="size-3.5" /> Delete
                   </Button>
                 </form>
