@@ -3,6 +3,8 @@
 //   prompt "fail" -> 401
 //   prompt "echo-settings" -> replies with the system prompt and sampling settings it received
 //   anything else -> streams "Hello from the mock!" (DeepSeek: "Hi from the second mock!")
+// Non-streaming requests are judge calls: it returns a JSON verdict that prefers
+// the answer containing "second", referring to answers by the judge's letters.
 // GET /last-auth returns the last Authorization header; GET /health for readiness.
 import http from "node:http";
 
@@ -24,6 +26,34 @@ http
     if (prompt === "fail") {
       res.writeHead(401, { "content-type": "application/json" });
       return res.end(JSON.stringify({ error: { message: "Invalid API key", type: "invalid_request_error" } }));
+    }
+
+    if (!body.stream) {
+      const answers = [...prompt.matchAll(/<answer id="([A-Z])">\n([\s\S]*?)\n<\/answer>/g)].map((m) => ({
+        id: m[1],
+        text: m[2],
+      }));
+      const best = answers.find((a) => a.text.includes("second")) ?? answers[0];
+      const verdict = {
+        scores: answers.map((a) => ({
+          id: a.id,
+          score: a === best ? 9 : 5,
+          reasoning: a === best ? `Answer ${a.id} is warm and clear.` : `Answer ${a.id} is fine but plain.`,
+        })),
+        winner: best?.id ?? "tie",
+        summary: `Answer ${best?.id} is friendlier.`,
+      };
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(
+        JSON.stringify({
+          id: "judge",
+          object: "chat.completion",
+          created: 0,
+          model: body.model,
+          choices: [{ index: 0, message: { role: "assistant", content: JSON.stringify(verdict) }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 },
+        })
+      );
     }
 
     res.writeHead(200, { "content-type": "text/event-stream" });

@@ -1,4 +1,5 @@
-// LLM-as-judge: types and pure helpers (client-safe).
+// LLM-as-judge: types and pure helpers (client-safe, also used by server pages).
+import { findModel } from "./models";
 
 export const DEFAULT_RUBRIC =
   "Score each answer from 1 to 10 for how well it serves the user: correctness first, then " +
@@ -56,4 +57,18 @@ export function relabel(
     const modelId = labels[letter];
     return modelId ? displayName(modelId) : match;
   });
+}
+
+/** One card's verdict line, e.g. "8/10 · Clear and correct.", or null if it wasn't scored. */
+export function verdictLine(verdict: JudgeVerdict, modelId: string, displayName: (id: string) => string) {
+  const s = verdict.scores[modelId];
+  if (!s) return null;
+  return `${s.score}/10 · ${relabel(s.reasoning, verdict.labels, displayName)}`;
+}
+
+/** The judge's name, its pick, and its summary in the names the user sees. */
+export function verdictSummary(verdict: JudgeVerdict, displayName: (id: string) => string) {
+  const judge = findModel(verdict.judgeModelId)?.label ?? verdict.judgeModelId;
+  const pick = verdict.winnerModelId ? `picks ${displayName(verdict.winnerModelId)}` : "calls it a tie";
+  return { judge, pick, summary: relabel(verdict.summary, verdict.labels, displayName) };
 }

@@ -7,6 +7,7 @@ import { getComparisonForViewer, type SavedResponse } from "@/server/comparisons
 import Model, { type RunState } from "../../components/Model";
 import CopyLinkButton from "../../components/CopyLinkButton";
 import { findModel } from "../../library/models";
+import { verdictLine, verdictSummary } from "../../library/judge";
 import { cleanSettings, describeSettings, type ComparisonSettings } from "../../library/settings";
 import { deleteComparisonAction, setShareAction } from "../../actions";
 
@@ -90,7 +91,8 @@ export default async function ComparisonPage({ params }: Props) {
   const { id } = await params;
   const found = await load(id);
   if (!found) notFound();
-  const { comparison, responses, isOwner, vote } = found;
+  const { comparison, responses, isOwner, vote, verdicts } = found;
+  const nameOf = (id: string) => findModel(id)?.label ?? id;
   const byModel = new Map(responses.map((r) => [r.modelId, r]));
 
   return (
@@ -155,6 +157,23 @@ export default async function ComparisonPage({ params }: Props) {
         )}
       </section>
 
+      {verdicts.length > 0 && (
+        <section
+          aria-label="AI judges"
+          style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, background: "#fafafa", marginBottom: 16 }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>AI judges</div>
+          {verdicts.map((v) => {
+            const s = verdictSummary(v, nameOf);
+            return (
+              <div key={v.judgeModelId} style={{ fontSize: 14, marginTop: 4 }}>
+                <strong>{s.judge}</strong> {s.pick}. {s.summary}
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       <div style={{ display: "grid", gap: 12 }}>
         {comparison.models.map((modelId) => {
           const saved = byModel.get(modelId);
@@ -167,6 +186,14 @@ export default async function ComparisonPage({ params }: Props) {
               label={findModel(modelId)?.label ?? modelId}
               state={state}
               badge={vote?.winnerModelId === modelId ? "Blind pick" : undefined}
+              footer={verdicts.map((v) => {
+                const line = verdictLine(v, modelId, nameOf);
+                return line ? (
+                  <div key={v.judgeModelId} style={{ marginTop: 6, fontSize: 13, color: "#374151" }}>
+                    <strong>Judge ({findModel(v.judgeModelId)?.label ?? v.judgeModelId}):</strong> {line}
+                  </div>
+                ) : null;
+              })}
             />
           );
         })}
