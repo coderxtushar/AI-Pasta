@@ -3,13 +3,14 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { safeErrorMessage } from "@/app/library/redact";
 
-export type LimitName = "generate" | "comparisons" | "keys";
+export type LimitName = "generate" | "comparisons" | "keys" | "templates";
 
 // Sliding-window limits. One full comparison is up to 6 generate requests.
 export const LIMITS: Record<LimitName, { requests: number; windowSec: number }> = {
   generate: { requests: 60, windowSec: 60 },
   comparisons: { requests: 20, windowSec: 60 },
   keys: { requests: 20, windowSec: 60 },
+  templates: { requests: 30, windowSec: 60 },
 };
 
 type Check = { ok: true } | { ok: false; retryAfterSec: number };

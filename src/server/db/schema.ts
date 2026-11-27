@@ -8,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import type { ProviderId } from "@/app/library/providers";
@@ -153,4 +154,21 @@ export const judgements = pgTable(
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.comparisonId, t.judgeModelId] })]
+);
+
+// Saved prompts. A name is unique per user; saving under an existing name replaces it.
+export const templates = pgTable(
+  "template",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    prompt: text("prompt").notNull(),
+    updatedAt: timestamp("updatedAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("template_user_name_idx").on(t.userId, t.name)]
 );

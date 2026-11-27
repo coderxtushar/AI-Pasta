@@ -10,6 +10,7 @@ import { PROVIDERS, PROVIDER_IDS, type ApiKeys, type ProviderId, type SavedKeyIn
 import { clearKeys, hasAnyKey, loadKeys } from "../library/keys";
 import { saveKeyToAccount, upsertKey } from "../library/accountKeys";
 import SettingsPanel from "./SettingsPanel";
+import TemplatePicker from "./TemplatePicker";
 import { blindLabel, shuffle } from "../library/blind";
 import JudgePanel from "./JudgePanel";
 import { verdictLine, type JudgeVerdict } from "../library/judge";
@@ -364,6 +365,7 @@ export default function Compare({
                   }}
                   placeholder="Write your prompt here..."
                 />
+                <TemplatePicker signedIn={signedIn} prompt={prompt} onLoad={setPrompt} />
               </div>
 
               <div style={{ marginBottom: 12 }}>
