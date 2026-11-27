@@ -189,6 +189,7 @@ export default async function ComparisonPage({ params }: Props) {
         </section>
       )}
 
+      <h2 className="sr-only">Answers</h2>
       <div className="grid items-start gap-3 md:grid-cols-[repeat(auto-fit,minmax(340px,1fr))]">
         {comparison.models.map((modelId) => {
           const last = turns.length - 1;

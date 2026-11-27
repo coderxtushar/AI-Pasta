@@ -186,6 +186,7 @@ export function DemoReplay({ run }: { run: DemoRun }) {
       </div>
 
       {/* Answers */}
+      <h2 className="sr-only">Example answers</h2>
       <div
         aria-label="Answers"
         className="grid snap-x snap-mandatory auto-cols-[85%] grid-flow-col gap-3 overflow-x-auto bg-background/40 p-3 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3"

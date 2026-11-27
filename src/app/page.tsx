@@ -42,10 +42,10 @@ function Feature({
   );
 }
 
-function Frame({ children, caption }: { children: React.ReactNode; caption?: string }) {
+function Frame({ children, caption, bare = false }: { children: React.ReactNode; caption?: string; bare?: boolean }) {
   return (
     <figure className="reveal-on-scroll">
-      <Spotlight className="rounded-xl border bg-card p-4 shadow-window">{children}</Spotlight>
+      {bare ? children : <Spotlight className="rounded-xl border bg-card p-4 shadow-window">{children}</Spotlight>}
       {caption && <figcaption className="mt-2 text-xs text-muted-foreground">{caption}</figcaption>}
     </figure>
   );
@@ -72,7 +72,7 @@ function KeysVisual() {
               )}
             </div>
             <div className="flex h-9 items-center rounded-md border bg-subtle px-3 font-mono text-[13px] text-muted-foreground">
-              {r.hint ?? <span className="text-muted-foreground/60">Paste key</span>}
+              {r.hint ?? <span className="text-muted-foreground">Paste key</span>}
             </div>
           </div>
         ))}
@@ -91,7 +91,7 @@ function excerpt(modelId: string) {
 function BlindVisual() {
   const pair = [run.answers[0]?.modelId, run.answers[1]?.modelId].filter(Boolean) as string[];
   return (
-    <Frame caption="Blind mode before the vote, and a personal leaderboard. Example values.">
+    <Frame bare caption="Blind mode before the vote, and a personal leaderboard. Example values.">
       <div className="grid grid-cols-2 gap-2.5">
         {pair.map((id, i) => {
           const name = i === 0 ? "Model A" : "Model B";
@@ -110,7 +110,7 @@ function BlindVisual() {
           );
         })}
       </div>
-      <div className="mt-3 divide-y rounded-lg border text-[13px]">
+      <div className="mt-3 divide-y rounded-xl border bg-card text-[13px]">
         {[
           ["claude-sonnet-5-5", "64%"],
           ["gpt-5.4-mini", "52%"],
@@ -145,7 +145,7 @@ function MetricsVisual() {
                 </span>
               )}
             </div>
-            <p className="mt-1 font-mono text-[11.5px] text-muted-foreground tabular">
+            <p className="mt-1 font-mono text-xs text-muted-foreground tabular">
               {formatMetrics({
                 ttftMs: a.ttftMs,
                 totalMs: a.totalMs,

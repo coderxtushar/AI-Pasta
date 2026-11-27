@@ -122,7 +122,7 @@ export default function JudgePanel({
           <p>
             <strong className="font-semibold">{v.judge}</strong> {v.pick}. {v.summary}
           </p>
-          <p className="mt-1 font-mono text-[11.5px] text-muted-foreground tabular">
+          <p className="mt-1 font-mono text-xs text-muted-foreground tabular">
             {(verdict.metrics.totalMs / 1000).toFixed(2)}s
             {verdict.metrics.inputTokens !== undefined &&
               ` · ${verdict.metrics.inputTokens} in / ${verdict.metrics.outputTokens} out tokens`}

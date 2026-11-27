@@ -61,7 +61,7 @@ typography:
     lineHeight: 1.4
   metric:
     fontFamily: "Geist Mono, ui-monospace, monospace"
-    fontSize: "11.5px"
+    fontSize: "12px"
     fontWeight: 400
     lineHeight: 1.75
     fontFeature: "tnum"
@@ -208,7 +208,7 @@ for code, metrics and keycaps, where alignment and measurement matter.
 - **Answer** (400, 14px, 1.65): model answers rendered as Markdown, with code in Geist
   Mono at 13px.
 - **Label** (500, 13px): chips, card titles, form labels.
-- **Metric** (Geist Mono, 11.5px, tabular figures): every latency, token and cost
+- **Metric** (Geist Mono, 12px, tabular figures): every latency, token and cost
   readout.
 
 ### Named Rules

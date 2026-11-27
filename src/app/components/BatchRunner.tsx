@@ -286,7 +286,7 @@ export default function BatchRunner({ signedIn, accountKeys }: Props) {
                 />
                 <span aria-hidden className={cn("size-2 rounded-full", !checked && "opacity-40")} style={{ background: modelColor(m.id) }} />
                 {m.label}
-                {!hasKey(m.provider) && <span className="text-[11px] text-muted-foreground/70">(no key)</span>}
+                {!hasKey(m.provider) && <span className="text-xs text-muted-foreground">(no key)</span>}
               </label>
             );
           })}
@@ -391,7 +391,7 @@ function ResultCell({ state }: { state: RunState | undefined }) {
           <div className="whitespace-pre-wrap">{state.text}</div>
         ))}
       {m && state.status === "done" && (
-        <div className="font-mono text-[11.5px] text-muted-foreground tabular">
+        <div className="font-mono text-xs text-muted-foreground tabular">
           {(m.totalMs / 1000).toFixed(2)}s
           {m.outputTokens !== undefined && ` · ${m.outputTokens} tok`}
           {m.costUsd !== undefined && ` · $${m.costUsd.toFixed(5)}`}

@@ -62,7 +62,7 @@ function MetricsLine({ metrics }: { metrics: GenerateMetrics }) {
   // Each item stays on one line; the line wraps only between items.
   const parts = formatMetrics(metrics).split(" · ");
   return (
-    <div className="font-mono text-[11.5px] leading-5 text-muted-foreground tabular">
+    <div className="font-mono text-xs leading-5 text-muted-foreground tabular">
       {parts.map((part, i) => (
         <span key={i}>
           <span className="whitespace-nowrap">{part}</span>
@@ -208,7 +208,7 @@ const Model: React.FC<ModelProps> = ({
           )}
         >
           {compact ? (
-            <p className="truncate font-mono text-[11.5px] leading-5 text-muted-foreground tabular" title={formatMetrics(state.metrics)}>
+            <p className="truncate font-mono text-xs leading-5 text-muted-foreground tabular" title={formatMetrics(state.metrics)}>
               {formatMetricsCompact(state.metrics)}
             </p>
           ) : (

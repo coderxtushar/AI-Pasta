@@ -496,7 +496,7 @@ export default function Compare({
             rows={4}
             maxLength={MAX_PROMPT_CHARS}
             placeholder="Ask every model the same thing…"
-            className="block max-h-[40vh] min-h-28 w-full resize-y rounded-t-2xl bg-transparent px-4 pt-4 pb-2 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground/80"
+            className="block max-h-[40vh] min-h-28 w-full resize-y rounded-t-2xl bg-transparent px-4 pt-4 pb-2 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground"
           />
 
           <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3">
@@ -532,7 +532,7 @@ export default function Compare({
                       style={{ background: modelColor(m.id) }}
                     />
                     {m.label}
-                    {!keyed && <span className="text-[11px] text-muted-foreground/70">no key</span>}
+                    {!keyed && <span className="text-xs text-muted-foreground">no key</span>}
                   </label>
                 );
               })}
@@ -705,6 +705,7 @@ export default function Compare({
         </p>
       )}
 
+      {hasResults && <h2 className="sr-only">Answers</h2>}
       {hasResults && (
         <div
           className={cn(
@@ -814,7 +815,7 @@ export default function Compare({
               }
             }}
             placeholder="Ask every model a follow-up question…"
-            className="block w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground/80"
+            className="block w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
           />
           <div className="flex items-center gap-2 px-3 pb-2.5">
             <span id="follow-up-hint" className="text-xs text-muted-foreground">
