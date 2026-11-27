@@ -1,9 +1,10 @@
-import { and, desc, eq, ilike } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 import { db } from "./db";
 import { comparisons, judgements, responses, type ResponseStatus } from "./db/schema";
 import type { JudgeVerdict } from "@/app/library/judge";
 import type { ComparisonSettings } from "@/app/library/settings";
 import { getVote } from "./votes";
+import { MAX_TURNS } from "@/app/library/conversation";
 
 export type Comparison = typeof comparisons.$inferSelect;
 export type SavedResponse = typeof responses.$inferSelect;
@@ -40,7 +41,7 @@ export async function getComparisonForViewer(id: string, viewerId: string | null
   if (!isOwner && !comparison.isPublic) return null;
 
   const [rows, vote, verdicts] = await Promise.all([
-    db.select().from(responses).where(eq(responses.comparisonId, id)),
+    db.select().from(responses).where(eq(responses.comparisonId, id)).orderBy(responses.turn),
     comparison.blind ? getVote(id) : Promise.resolve(null),
     listJudgements(id),
   ]);
@@ -83,7 +84,35 @@ export type ResponseInput = {
   notes?: string[];
 };
 
-export async function saveResponse(comparisonId: string, modelId: string, r: ResponseInput) {
+export type FollowUpResult = "ok" | "not-found" | "out-of-order" | "too-many";
+
+/**
+ * Appends follow-up `turn` (1, 2, …) to the owner's comparison. The update only
+ * applies if it's exactly the next turn, so two tabs can't interleave turns.
+ */
+export async function appendFollowUp(
+  userId: string,
+  comparisonId: string,
+  turn: number,
+  content: string
+): Promise<FollowUpResult> {
+  if (turn >= MAX_TURNS) return "too-many";
+  const updated = await db
+    .update(comparisons)
+    .set({ followUps: sql`array_append(${comparisons.followUps}, ${content})` })
+    .where(
+      and(
+        eq(comparisons.id, comparisonId),
+        eq(comparisons.userId, userId),
+        sql`cardinality(${comparisons.followUps}) = ${turn - 1}`
+      )
+    )
+    .returning({ id: comparisons.id });
+  if (updated.length) return "ok";
+  return (await getOwnedComparison(userId, comparisonId)) ? "out-of-order" : "not-found";
+}
+
+export async function saveResponse(comparisonId: string, modelId: string, turn: number, r: ResponseInput) {
   const values = {
     status: r.status,
     text: r.text,
@@ -99,16 +128,16 @@ export async function saveResponse(comparisonId: string, modelId: string, r: Res
   };
   await db
     .insert(responses)
-    .values({ comparisonId, modelId, ...values })
-    .onConflictDoUpdate({ target: [responses.comparisonId, responses.modelId], set: values });
+    .values({ comparisonId, modelId, turn, ...values })
+    .onConflictDoUpdate({ target: [responses.comparisonId, responses.modelId, responses.turn], set: values });
 }
 
-/** Answers that finished, for judging. */
+/** First-turn answers that finished, for judging (the judge scores the first prompt). */
 export async function getFinishedAnswers(comparisonId: string): Promise<{ modelId: string; text: string }[]> {
   const rows = await db
     .select({ modelId: responses.modelId, text: responses.text })
     .from(responses)
-    .where(and(eq(responses.comparisonId, comparisonId), eq(responses.status, "done")));
+    .where(and(eq(responses.comparisonId, comparisonId), eq(responses.status, "done"), eq(responses.turn, 0)));
   return rows.filter((r) => r.text.trim());
 }
 

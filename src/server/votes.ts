@@ -33,7 +33,8 @@ export async function castVote(
         and(
           eq(responses.comparisonId, comparisonId),
           eq(responses.modelId, winnerModelId),
-          eq(responses.status, "done")
+          eq(responses.status, "done"),
+          eq(responses.turn, 0)
         )
       )
       .limit(1);
@@ -65,7 +66,8 @@ export async function getLeaderboard(userId: string): Promise<LeaderboardRow[]> 
     .from(votes)
     .innerJoin(
       responses,
-      and(eq(responses.comparisonId, votes.comparisonId), eq(responses.status, "done"))
+      // Votes are about the first prompt; follow-up answers don't count as appearances.
+      and(eq(responses.comparisonId, votes.comparisonId), eq(responses.status, "done"), eq(responses.turn, 0))
     )
     .where(eq(votes.userId, userId))
     .groupBy(responses.modelId);

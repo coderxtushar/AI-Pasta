@@ -231,6 +231,92 @@ describe("POST /api/generate: generation settings", () => {
   });
 });
 
+describe("POST /api/generate: conversations", () => {
+  function spy() {
+    const calls: { prompt: unknown }[] = [];
+    vi.mocked(getLanguageModel).mockReturnValue(
+      new MockLanguageModelV2({
+        doStream: async (options) => {
+          calls.push(options as never);
+          return textModel(["ok"]).doStream(options);
+        },
+      })
+    );
+    return calls;
+  }
+  const convo = [
+    { role: "user", content: "Q1" },
+    { role: "assistant", content: "A1" },
+    { role: "user", content: "Q2" },
+  ];
+
+  it("sends this model's history, merging back-to-back user messages", async () => {
+    const calls = spy();
+    const messages = [
+      { role: "user", content: "Q1" },
+      { role: "user", content: "Q2" }, // Q1 failed for this model, so there's no answer between
+      { role: "assistant", content: "A2" },
+      { role: "user", content: "Q3" },
+    ];
+    await events(await POST(post({ model: "gpt-5.4-mini", apiKey: "k", messages })));
+    const sent = (calls[0].prompt as { role: string; content: { text: string }[] }[]).map((m) => [
+      m.role,
+      m.content.map((c) => c.text).join(""),
+    ]);
+    expect(sent).toEqual([
+      ["user", "Q1\n\nQ2"],
+      ["assistant", "A2"],
+      ["user", "Q3"],
+    ]);
+  });
+
+  it.each([
+    [{ prompt: "hi", messages: [{ role: "user", content: "hi" }] }, "Send either `prompt` or `messages`."],
+    [{ messages: [{ role: "user", content: "hi" }, { role: "assistant", content: "yo" }] }, "must not be empty"],
+    [{ messages: Array.from({ length: 41 }, (_, i) => ({ role: i % 2 ? "assistant" : "user", content: "x" })) }, "at most 20 turns"],
+  ])("rejects %#", async (body, message) => {
+    const res = await POST(post({ model: "gpt-5.4-mini", apiKey: "k", ...body }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain(message);
+  });
+
+  it("saves a follow-up under its turn when it matches the saved conversation", async () => {
+    spy();
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getOwnedComparison).mockResolvedValue({
+      id: "c1",
+      userId: "u1",
+      prompt: "Q1",
+      followUps: ["Q2"],
+      models: ["gpt-5.4-mini"],
+      isPublic: false,
+      settings: null,
+      blind: false,
+      createdAt: new Date(),
+    });
+    await events(await POST(post({ model: "gpt-5.4-mini", apiKey: "k", messages: convo, comparisonId: "c1" })));
+    expect(saveResponse).toHaveBeenCalledWith("c1", "gpt-5.4-mini", 1, expect.objectContaining({ status: "done" }));
+  });
+
+  it("refuses a follow-up that wasn't saved first", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getOwnedComparison).mockResolvedValue({
+      id: "c1",
+      userId: "u1",
+      prompt: "Q1",
+      followUps: [],
+      models: ["gpt-5.4-mini"],
+      isPublic: false,
+      settings: null,
+      blind: false,
+      createdAt: new Date(),
+    });
+    const res = await POST(post({ model: "gpt-5.4-mini", apiKey: "k", messages: convo, comparisonId: "c1" }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("The conversation doesn't match the saved comparison.");
+  });
+});
+
 describe("POST /api/generate: account keys", () => {
   const noKey = { prompt: "hi", model: "gpt-5.4-mini" };
 
@@ -273,6 +359,7 @@ describe("POST /api/generate: saving to history", () => {
     isPublic: false,
     settings: null,
     blind: false,
+    followUps: [] as string[],
     createdAt: new Date(),
   };
 
@@ -297,6 +384,7 @@ describe("POST /api/generate: saving to history", () => {
     expect(saveResponse).toHaveBeenCalledWith(
       "c1",
       "gpt-5.4-mini",
+      0,
       expect.objectContaining({ status: "done", text: "Hello", inputTokens: 10, outputTokens: 20 })
     );
   });
@@ -325,6 +413,6 @@ describe("POST /api/generate: saving to history", () => {
     vi.mocked(getOwnedComparison).mockResolvedValue(comparison);
     vi.mocked(getLanguageModel).mockReturnValue(failingModel(new Error("boom")));
     await events(await POST(post({ ...base, comparisonId: "c1" })));
-    expect(saveResponse).toHaveBeenCalledWith("c1", "gpt-5.4-mini", expect.objectContaining({ status: "error" }));
+    expect(saveResponse).toHaveBeenCalledWith("c1", "gpt-5.4-mini", 0, expect.objectContaining({ status: "error" }));
   });
 });

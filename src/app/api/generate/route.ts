@@ -7,6 +7,7 @@ import { estimateCostUsd, findModel } from "@/app/library/models";
 import type { GenerateMetrics, StreamEvent } from "@/app/library/stream";
 import { resolveApiKey } from "@/server/resolveKey";
 import { getOwnedComparison, saveResponse, type ResponseInput } from "@/server/comparisons";
+import { MAX_TURNS, normalizeMessages, userTurns, type ChatMessage } from "@/app/library/conversation";
 import { getLanguageModel } from "@/server/llm";
 import { describeProviderError } from "@/server/providerErrors";
 import { safeErrorMessage } from "@/app/library/redact";
@@ -24,11 +25,21 @@ export const maxDuration = 60;
 
 const TIMEOUT_MS = 55_000;
 
+const MAX_MESSAGE_CHARS = 100_000;
+
 const RequestSchema = z.object({
-  prompt: z
-    .string({ required_error: "`prompt` is required." })
-    .max(MAX_PROMPT_CHARS, `\`prompt\` must be at most ${MAX_PROMPT_CHARS} characters.`)
-    .refine((p) => p.trim().length > 0, "`prompt` must not be empty."),
+  /** A single prompt. Send either this or `messages`. */
+  prompt: z.string().optional(),
+  /** A conversation for multi-turn chat: this model's history, ending with the new user message. */
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(MAX_MESSAGE_CHARS, `Messages must be at most ${MAX_MESSAGE_CHARS} characters.`),
+      })
+    )
+    .max(MAX_TURNS * 2, `A conversation can have at most ${MAX_TURNS} turns.`)
+    .optional(),
   model: z
     .string({ required_error: "`model` is required." })
     .refine((id) => findModel(id) !== undefined, "Unknown model."),
@@ -68,6 +79,7 @@ function logGeneration(
   model: string,
   keySource: "browser" | "account",
   saved: boolean,
+  turn: number,
   o: ResponseInput
 ) {
   console.log(
@@ -77,6 +89,7 @@ function logGeneration(
       model,
       keySource,
       saved,
+      turn,
       status: o.status,
       ttftMs: o.ttftMs,
       totalMs: o.totalMs,
@@ -108,7 +121,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { prompt, comparisonId } = parsed.data;
+  const { comparisonId } = parsed.data;
+  if ((parsed.data.prompt === undefined) === (parsed.data.messages === undefined)) {
+    return NextResponse.json({ error: "Send either `prompt` or `messages`." }, { status: 400 });
+  }
+  const messages: ChatMessage[] = parsed.data.messages ?? [{ role: "user", content: parsed.data.prompt! }];
+  const last = messages.at(-1);
+  if (!last || last.role !== "user" || !last.content.trim()) {
+    return NextResponse.json({ error: "`prompt` must not be empty." }, { status: 400 });
+  }
+  if (last.content.length > MAX_PROMPT_CHARS) {
+    return NextResponse.json(
+      { error: `\`prompt\` must be at most ${MAX_PROMPT_CHARS} characters.` },
+      { status: 400 }
+    );
+  }
+  const askedTurns = messages.filter((m) => m.role === "user").map((m) => m.content);
+  const turn = askedTurns.length - 1;
+  if (turn >= MAX_TURNS) {
+    return NextResponse.json({ error: `A conversation can have at most ${MAX_TURNS} turns.` }, { status: 400 });
+  }
   const model = findModel(parsed.data.model)!;
   const needsUser = Boolean(comparisonId) || !parsed.data.apiKey;
   const userId = needsUser ? await currentUserId() : null;
@@ -119,14 +151,16 @@ export async function POST(req: NextRequest) {
 
   let settings: GenerationSettings = cleanSettings(parsed.data.settings);
 
-  // Only the owner can save into a comparison, and only for its prompt and models.
+  // Only the owner can save into a comparison, and only for its models and the
+  // user messages saved so far (the first prompt, then each follow-up).
   if (comparisonId) {
     const comparison = userId ? await getOwnedComparison(userId, comparisonId) : null;
     if (!comparison || !comparison.models.includes(model.id)) {
       return NextResponse.json({ error: "Comparison not found." }, { status: 404 });
     }
-    if (comparison.prompt !== prompt) {
-      return NextResponse.json({ error: "Prompt does not match the comparison." }, { status: 400 });
+    const saved = userTurns(comparison);
+    if (askedTurns.length > saved.length || askedTurns.some((content, i) => content !== saved[i])) {
+      return NextResponse.json({ error: "The conversation doesn't match the saved comparison." }, { status: 400 });
     }
     // The saved settings are what the history page shows, so they're what runs.
     settings = effectiveSettings(comparison.settings, model.id);
@@ -141,7 +175,7 @@ export async function POST(req: NextRequest) {
   const result = streamText({
     model: getLanguageModel(model, apiKey),
     system: settings.systemPrompt,
-    prompt,
+    messages: normalizeMessages(messages),
     temperature: settings.temperature,
     topP: settings.topP,
     maxOutputTokens: settings.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
@@ -226,11 +260,11 @@ export async function POST(req: NextRequest) {
         fail("Stream ended without a result.");
         if (comparisonId && outcome) {
           // Runs even if the client pressed Stop, so partial output is kept.
-          await saveResponse(comparisonId, model.id, outcome).catch((e) =>
+          await saveResponse(comparisonId, model.id, turn, outcome).catch((e) =>
             console.error("Saving response failed:", safeErrorMessage(e))
           );
         }
-        if (outcome) logGeneration(model.provider, model.id, keySource, Boolean(comparisonId), outcome);
+        if (outcome) logGeneration(model.provider, model.id, keySource, Boolean(comparisonId), turn, outcome);
         try {
           controller.close();
         } catch {

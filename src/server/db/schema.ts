@@ -10,6 +10,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type { AdapterAccountType } from "next-auth/adapters";
 import type { ProviderId } from "@/app/library/providers";
 import type { ComparisonSettings } from "@/app/library/settings";
@@ -74,6 +75,8 @@ export const comparisons = pgTable(
     settings: jsonb("settings").$type<ComparisonSettings>(),
     /** Answers were shown anonymized (Model A/B/C) until the user voted. */
     blind: boolean("blind").notNull().default(false),
+    /** User messages after the first prompt, in order (turn 1, 2, …). */
+    followUps: text("followUps").array().notNull().default(sql`'{}'::text[]`),
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("comparison_user_created_idx").on(t.userId, t.createdAt)]
@@ -109,6 +112,8 @@ export const responses = pgTable(
       .notNull()
       .references(() => comparisons.id, { onDelete: "cascade" }),
     modelId: text("modelId").notNull(),
+    /** 0 for the first prompt, then 1, 2, … for follow-ups. */
+    turn: integer("turn").notNull().default(0),
     status: text("status").$type<ResponseStatus>().notNull(),
     text: text("text").notNull().default(""),
     error: text("error"),
@@ -123,7 +128,7 @@ export const responses = pgTable(
     notes: text("notes").array(),
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.comparisonId, t.modelId] })]
+  (t) => [primaryKey({ columns: [t.comparisonId, t.modelId, t.turn] })]
 );
 
 // One vote per blind comparison, by its owner. A null winner means "tie".
