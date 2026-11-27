@@ -38,7 +38,10 @@ type ModelProps = {
   /** Tight preview (landing replay): bare code blocks and a one-line metrics footer. */
   compact?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 };
+
+const ENTER_FADE = "animate-in fade-in duration-300 ease-out-expo";
 
 const STATUS: Record<RunState["status"], { text: string; tone: string }> = {
   streaming: { text: "Streaming…", tone: "text-brand" },
@@ -115,6 +118,7 @@ const Model: React.FC<ModelProps> = ({
   variant = "card",
   compact = false,
   className,
+  style,
 }) => {
   const status =
     state.status === "streaming" && state.waitingSec
@@ -128,6 +132,7 @@ const Model: React.FC<ModelProps> = ({
     <section
       aria-label={label}
       aria-busy={streaming}
+      style={style}
       className={cn(
         "flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground",
         className
@@ -136,11 +141,17 @@ const Model: React.FC<ModelProps> = ({
       <header className="flex items-center gap-2 border-b px-3.5 py-2.5">
         <span
           aria-hidden
-          className="size-2.5 shrink-0 rounded-full"
+          className={cn("size-2.5 shrink-0 rounded-full transition-[background-color] duration-700", streaming && "live-dot")}
           style={{ background: anonymous || !color ? "var(--muted-foreground)" : color }}
         />
         <h3 className="min-w-0 truncate text-sm font-semibold">
-          {label}
+          {subtitle ? (
+            <span key={label} className="name-reveal">
+              {label}
+            </span>
+          ) : (
+            label
+          )}
           {subtitle && <span className="ml-2 text-xs font-normal text-muted-foreground">{subtitle}</span>}
         </h3>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -148,12 +159,14 @@ const Model: React.FC<ModelProps> = ({
             <span
               key={b}
               title={b === "Cheapest" ? "Cheapest of the models with a known list price" : undefined}
-              className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success"
+              className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success animate-in fade-in zoom-in-75 duration-500 ease-out-expo"
             >
               {b}
             </span>
           ))}
-          <span className={cn("text-xs font-medium", status.tone)}>{status.text}</span>
+          <span key={status.text} className={cn("text-xs font-medium", ENTER_FADE, status.tone)}>
+            {status.text}
+          </span>
           {actions}
         </div>
       </header>
@@ -174,10 +187,12 @@ const Model: React.FC<ModelProps> = ({
             <Skeleton className="h-3 w-2/3" />
           </div>
         )}
-        {state.text && <AnswerMarkdown text={state.text} streaming={streaming} compact={compact} />}
+        {state.text && (
+          <AnswerMarkdown text={state.text} streaming={streaming} compact={compact} className={ENTER_FADE} />
+        )}
 
         {state.status === "error" && state.error && (
-          <div className="mt-2 flex gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+          <div className="mt-2 flex gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger animate-in fade-in slide-in-from-top-1 duration-300 ease-out-expo">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>{anonymous ? "This model's answer failed. Details appear after you vote." : `Error: ${state.error}`}</span>
           </div>
@@ -186,7 +201,12 @@ const Model: React.FC<ModelProps> = ({
       </div>
 
       {!anonymous && state.metrics && (
-        <footer className={cn("border-t bg-subtle px-3.5", compact ? "py-1.5" : "py-2")}>
+        <footer
+          className={cn(
+            "border-t bg-subtle px-3.5 animate-in fade-in slide-in-from-bottom-1 duration-500 ease-out-expo",
+            compact ? "py-1.5" : "py-2"
+          )}
+        >
           {compact ? (
             <p className="truncate font-mono text-[11.5px] leading-5 text-muted-foreground tabular" title={formatMetrics(state.metrics)}>
               {formatMetricsCompact(state.metrics)}

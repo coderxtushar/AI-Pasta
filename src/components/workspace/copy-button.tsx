@@ -21,7 +21,11 @@ export function CopyButton({ text, label = "Copy", className }: { text: string; 
     <Tooltip>
       <TooltipTrigger asChild>
         <Button type="button" variant="ghost" size="icon-xs" onClick={copy} aria-label={label} className={className}>
-          {copied ? <Check className="text-success" /> : <Copy />}
+          {copied ? (
+            <Check key="done" className="text-success animate-in fade-in zoom-in-50 duration-300 ease-out-expo" />
+          ) : (
+            <Copy key="copy" className="animate-in fade-in duration-200" />
+          )}
         </Button>
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied" : label}</TooltipContent>

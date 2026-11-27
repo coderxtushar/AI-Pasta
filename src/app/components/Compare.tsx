@@ -61,6 +61,13 @@ const EXAMPLES = [
 
 type RunRequest = { prompt?: string; messages?: ChatMessage[] };
 
+/** Briefly presses the keycaps inside `root`, so a keyboard shortcut visibly lands. */
+function pressKeycaps(root: HTMLElement | null) {
+  const caps = root?.querySelectorAll<HTMLElement>('[data-slot="kbd"]') ?? [];
+  caps.forEach((cap) => cap.setAttribute("data-pressed", ""));
+  window.setTimeout(() => caps.forEach((cap) => cap.removeAttribute("data-pressed")), 140);
+}
+
 export default function Compare({
   signedIn,
   authEnabled,
@@ -464,7 +471,12 @@ export default function Compare({
       )}
 
       {/* Composer: prompt, models and run options. Sheets sit outside the form so their own forms never submit it. */}
-      <section aria-label="Composer" className="rounded-2xl border bg-card shadow-window">
+      <section aria-label="Composer" className="relative rounded-2xl border bg-card shadow-window">
+        {loading && runOrder.length > 0 && (
+          <div aria-hidden className="run-progress">
+            <span style={{ transform: `scaleX(${Math.max(0.04, doneCount / runOrder.length)})` }} />
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <Label htmlFor="prompt" className="sr-only">
             Prompt
@@ -477,6 +489,7 @@ export default function Compare({
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
+                pressKeycaps(e.currentTarget.form);
                 handleSubmit();
               }
             }}
@@ -496,7 +509,8 @@ export default function Compare({
                   <label
                     key={m.id}
                     className={cn(
-                      "relative inline-flex h-8 cursor-pointer items-center gap-2 rounded-full border px-3 text-[13px] transition-colors select-none",
+                      "relative inline-flex h-8 cursor-pointer items-center gap-2 rounded-full border px-3 text-[13px] select-none",
+                      "transition-[color,background-color,border-color,transform] duration-150 ease-out active:scale-[0.97]",
                       "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
                       checked ? "border-foreground/20 bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
                     )}
@@ -511,7 +525,10 @@ export default function Compare({
                     />
                     <span
                       aria-hidden
-                      className={cn("size-2 rounded-full transition-opacity", !checked && "opacity-40")}
+                      className={cn(
+                        "size-2 rounded-full transition-[opacity,transform] duration-300 ease-out-expo",
+                        !checked && "scale-75 opacity-40"
+                      )}
                       style={{ background: modelColor(m.id) }}
                     />
                     {m.label}
@@ -657,7 +674,7 @@ export default function Compare({
         <div
           role="group"
           aria-label="Blind vote"
-          className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm"
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm animate-in fade-in slide-in-from-top-1 duration-300 ease-out-expo"
         >
           {answeredIds.length >= 2 ? (
             <>
@@ -677,7 +694,7 @@ export default function Compare({
         </div>
       )}
       {blindRun?.revealed && (
-        <p role="status" className="text-sm">
+        <p role="status" className="text-sm animate-in fade-in duration-500 ease-out-expo">
           {blindRun.pick === undefined
             ? "Names revealed."
             : blindRun.pick === null
@@ -709,7 +726,8 @@ export default function Compare({
               <Model
                 key={id}
                 variant="column"
-                className="max-h-[min(68vh,720px)] snap-start"
+                className="max-h-[min(68vh,720px)] snap-start animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out-expo"
+                style={{ animationDelay: `${Math.min(index, 5) * 50}ms` }}
                 label={hiddenNames ? blindLabel(index) : name}
                 subtitle={blindRun?.revealed ? `was ${blindLabel(index)}` : undefined}
                 badges={badges}
@@ -778,7 +796,7 @@ export default function Compare({
           role="group"
           aria-label="Follow-up"
           onSubmit={sendFollowUp}
-          className="mx-auto w-full max-w-3xl rounded-2xl border bg-card shadow-window"
+          className="mx-auto w-full max-w-3xl rounded-2xl border bg-card shadow-window animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out-expo"
         >
           <textarea
             id="follow-up"
@@ -791,6 +809,7 @@ export default function Compare({
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
+                pressKeycaps(e.currentTarget.form);
                 sendFollowUp();
               }
             }}

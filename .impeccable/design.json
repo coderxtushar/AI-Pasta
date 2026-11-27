@@ -419,7 +419,42 @@
       {
         "name": "ease-out-expo",
         "value": "cubic-bezier(0.16, 1, 0.3, 1)",
-        "purpose": "Entrances and sheet transitions."
+        "purpose": "Every arrival: entrances, sheets, dialogs, the nav highlight."
+      },
+      {
+        "name": "hero-rise",
+        "value": "rise-in 0.9s ease-out-expo, staggered 0/90/180/260ms",
+        "purpose": "Landing headline, subhead, actions and note rise out of an 8px blur."
+      },
+      {
+        "name": "window-in",
+        "value": "1.2s ease-out-expo, 0.32s delay; from translateY(48px) rotateX(14deg) scale(0.97)",
+        "purpose": "The replay window lands; the replay starts 0.9s after it is on screen."
+      },
+      {
+        "name": "replay-clock",
+        "value": "run time in Geist Mono plus a tangerine scaleX progress line",
+        "purpose": "Shows the replay's elapsed run time while it plays."
+      },
+      {
+        "name": "live-ping",
+        "value": "1.4s ease-out-expo infinite, scale 1 to 2.8, fading",
+        "purpose": "A streaming model's dot; stops when the answer finishes."
+      },
+      {
+        "name": "name-reveal",
+        "value": "0.7s ease-out-expo from blur(6px)",
+        "purpose": "Real model names after a blind vote."
+      },
+      {
+        "name": "press",
+        "value": "scale 0.98 (buttons), 0.97 (chips), translateY 1px (keycaps); 100-150ms",
+        "purpose": "Tactile feedback."
+      },
+      {
+        "name": "column-stagger",
+        "value": "fade + slide 12px, 500ms, 50ms apart (max 250ms)",
+        "purpose": "Answer columns appearing for a new run."
       },
       {
         "name": "caret-blink",
@@ -427,9 +462,9 @@
         "purpose": "Streaming caret at the end of an answer while tokens arrive."
       },
       {
-        "name": "replay",
-        "value": "each answer from its time to first token to its total time, at most 6s",
-        "purpose": "The landing replay; reduced motion shows the finished run."
+        "name": "reduced-motion",
+        "value": "fade-only 0.4s; no translate, scale, rotate, blur or loops",
+        "purpose": "prefers-reduced-motion: reduce."
       }
     ],
     "breakpoints": [
@@ -520,7 +555,8 @@
       "Light-on-dark primary buttons; keyboard hints as keycaps",
       "One colour per model, the same on every surface",
       "Metrics in Geist Mono with tabular figures, beside every answer",
-      "One warm accent, reserved for live and attention signals"
+      "One warm accent, reserved for live and attention signals",
+      "Motion that eases out (expo) from a visible end state: one authored entrance, the rest feedback"
     ],
     "rules": [
       {
@@ -549,14 +585,16 @@
       "Do keep each model's hue identical on every surface, and grey while blind.",
       "Do reserve tangerine for live and attention signals.",
       "Do label any example data as an example, and any recorded run with its date.",
-      "Do give every shortcut you display (⌘K, ⌘↵, ↵) a working binding."
+      "Do give every shortcut you display (⌘K, ⌘↵, ↵) a working binding.",
+      "Do keep motion to feedback and state in the workspace; the authored entrance belongs to the landing hero."
     ],
     "donts": [
       "Don't use pasta or food imagery, or a playful or cartoonish tone (confirmed by the owner).",
       "Don't invent proof: no customer logos, testimonials, usage numbers or benchmarks.",
       "Don't use the AI providers' brand colours for models.",
       "Don't put shadows on flat cards or rows; only windows lift.",
-      "Don't use glyph characters in place of icons; use Lucide icons at one stroke."
+      "Don't use glyph characters in place of icons; use Lucide icons at one stroke.",
+      "Don't use bounce or elastic easing, or loop an animation that does not report live state."
     ]
   }
 }

@@ -15,6 +15,9 @@ export function EnterToStart() {
       const active = document.activeElement;
       if (active && active !== document.body) return;
       e.preventDefault();
+      // Press the hero's keycap so the shortcut visibly lands, then go.
+      const cap = document.querySelector<HTMLElement>("[data-enter-kbd]");
+      cap?.setAttribute("data-pressed", "");
       router.push("/app");
     }
     window.addEventListener("keydown", onKey);

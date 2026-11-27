@@ -30,6 +30,8 @@ export type DemoRun = {
 /** Longest a replay plays for; slower recorded runs are sped up and say so. */
 const MAX_PLAY_MS = 6000;
 const TICK_MS = 50;
+/** The first play waits for the window's entrance (`.motion-window`) to settle. */
+const FIRST_PLAY_DELAY_MS = 900;
 
 function stateAt(a: DemoAnswer, elapsed: number): RunState {
   if (elapsed >= a.totalMs) {
@@ -81,17 +83,21 @@ export function DemoReplay({ run }: { run: DemoRun }) {
     }
     const el = rootRef.current;
     if (!el) return;
+    let timer: number | undefined;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          play();
+          timer = window.setTimeout(play, FIRST_PLAY_DELAY_MS);
           observer.disconnect();
         }
       },
       { threshold: 0.01 }
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
   }, [play, longest]);
 
   useEffect(() => {
@@ -111,15 +117,33 @@ export function DemoReplay({ run }: { run: DemoRun }) {
   const priced = measured.filter((a) => a.costUsd !== undefined);
   const cheapest = finished && priced.length >= 2 ? priced.reduce((a, b) => (b.costUsd! < a.costUsd! ? b : a)).modelId : null;
 
+  const shownMs = Math.min(elapsed, longest);
+  const progress = shownMs / longest;
+
   const label =
     run.source === "recorded" && run.recordedAt
       ? `Replay of a recorded run · ${new Date(run.recordedAt).toLocaleDateString("en-US", { dateStyle: "medium" })}`
       : "Illustrative example · written by hand, not measured";
 
   return (
-    <div ref={rootRef} className="overflow-hidden rounded-2xl border bg-card shadow-window">
-      {/* Window chrome */}
-      <div className="flex items-center gap-3 border-b bg-subtle px-4 py-2.5">
+    <div
+      ref={rootRef}
+      onPointerMove={(e) => {
+        const el = rootRef.current;
+        if (!el || e.pointerType !== "mouse") return;
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--spot-x", `${e.clientX - r.left}px`);
+        el.style.setProperty("--spot-y", `${e.clientY - r.top}px`);
+      }}
+      className="spotlight overflow-hidden rounded-2xl border bg-card shadow-window"
+    >
+      {/* Window chrome, with the run's clock and a progress line along its lower edge. */}
+      <div className="window-sheen flex items-center gap-3 border-b bg-subtle px-4 py-2.5">
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-px origin-left bg-brand transition-[transform,opacity] duration-100 ease-linear"
+          style={{ transform: `scaleX(${progress})`, opacity: playing ? 1 : 0, transitionDuration: playing ? undefined : "700ms" }}
+        />
         <div aria-hidden className="flex gap-1.5">
           <span className="size-2.5 rounded-full bg-foreground/15" />
           <span className="size-2.5 rounded-full bg-foreground/15" />
@@ -129,6 +153,12 @@ export function DemoReplay({ run }: { run: DemoRun }) {
           {label}
           {speed > 1 && ` · played at ${speed.toFixed(1)}× speed`}
         </p>
+        <span
+          aria-hidden
+          className={`hidden w-12 text-right font-mono text-xs tabular transition-colors duration-500 sm:inline ${playing ? "text-brand" : "text-muted-foreground"}`}
+        >
+          {(shownMs / 1000).toFixed(2)}s
+        </span>
         <Button
           type="button"
           variant="ghost"

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { DemoReplay, type DemoRun } from "@/components/landing/demo-replay";
 import { EnterToStart } from "@/components/landing/enter-to-start";
+import { Spotlight } from "@/components/landing/spotlight";
 import Model from "./components/Model";
 import { formatMetrics } from "./library/format";
 import demo from "./library/demo-run.json";
@@ -43,8 +44,8 @@ function Feature({
 
 function Frame({ children, caption }: { children: React.ReactNode; caption?: string }) {
   return (
-    <figure>
-      <div className="rounded-xl border bg-card p-4 shadow-window">{children}</div>
+    <figure className="reveal-on-scroll">
+      <Spotlight className="rounded-xl border bg-card p-4 shadow-window">{children}</Spotlight>
       {caption && <figcaption className="mt-2 text-xs text-muted-foreground">{caption}</figcaption>}
     </figure>
   );
@@ -183,7 +184,11 @@ function BatchVisual() {
                 <Check className="inline size-3.5" aria-label="done" />
               </td>
               <td className="py-1.5 text-muted-foreground">
-                {i < 2 ? <Check className="inline size-3.5 text-success" aria-label="done" /> : "Running…"}
+                {i < 2 ? (
+                  <Check className="inline size-3.5 text-success" aria-label="done" />
+                ) : (
+                  <span className="animate-pulse">Running…</span>
+                )}
               </td>
             </tr>
           ))}
@@ -241,25 +246,25 @@ export default async function Landing({ searchParams }: Props) {
       <section className="relative mx-auto max-w-[1200px] px-4 pt-12 sm:px-6 sm:pt-14">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 -top-24 -z-10 mx-auto h-[460px] max-w-4xl"
+          className="hero-glow pointer-events-none absolute inset-x-0 -top-24 -z-10 mx-auto h-[460px] max-w-4xl"
           style={{
             background:
               "radial-gradient(closest-side, color-mix(in oklch, var(--foreground) 5%, transparent), transparent)",
           }}
         />
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="text-4xl font-semibold tracking-[-0.035em] text-balance sm:text-6xl">
+          <h1 className="motion-rise text-4xl font-semibold tracking-[-0.035em] text-balance sm:text-6xl">
             <span className="sm:block">Same prompt. Every model.</span> <span className="sm:block">Real numbers.</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-balance text-muted-foreground sm:text-lg">
+          <p style={{ "--d": "90ms" } as React.CSSProperties} className="motion-rise mx-auto mt-5 max-w-2xl text-base leading-relaxed text-balance text-muted-foreground sm:text-lg">
             One prompt to GPT, Claude, Gemini, DeepSeek, Groq and Qwen at once: answers side by side, with latency
             and cost, on your own API keys.
           </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+          <div style={{ "--d": "180ms" } as React.CSSProperties} className="motion-rise mt-7 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg" className="h-11 px-5 text-[15px]">
               <Link href="/app">
                 Start comparing
-                <Kbd className="bg-primary-foreground/10 text-primary-foreground pointer-coarse:hidden">↵</Kbd>
+                <Kbd data-enter-kbd className="bg-primary-foreground/10 text-primary-foreground pointer-coarse:hidden">↵</Kbd>
               </Link>
             </Button>
             <Button asChild size="lg" variant="ghost" className="h-11 px-4 text-[15px] text-muted-foreground">
@@ -268,10 +273,10 @@ export default async function Landing({ searchParams }: Props) {
               </a>
             </Button>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">No signup. One API key is enough.</p>
+          <p style={{ "--d": "260ms" } as React.CSSProperties} className="motion-rise mt-4 text-xs text-muted-foreground">No signup. One API key is enough.</p>
         </div>
 
-        <div className="mt-10">
+        <div className="motion-window mt-10">
           <EnterToStart />
           <DemoReplay run={run} />
         </div>
@@ -346,10 +351,10 @@ export default async function Landing({ searchParams }: Props) {
           </h2>
           <div className="mt-5 divide-y rounded-xl border">
             {FAQ.map(({ q, a }) => (
-              <details key={q} className="group px-4 py-3.5">
+              <details key={q} className="faq-item group px-4 py-3.5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium select-none [&::-webkit-details-marker]:hidden">
                   {q}
-                  <Plus aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-45" />
+                  <Plus aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-out-expo group-open:rotate-45" />
                 </summary>
                 <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{a}</p>
               </details>
@@ -364,9 +369,10 @@ export default async function Landing({ searchParams }: Props) {
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
             Pick your next model with numbers.
           </h2>
-          <Button asChild size="lg" className="h-11 px-5 text-[15px]">
+          <Button asChild size="lg" className="group h-11 px-5 text-[15px]">
             <Link href="/app">
-              Start comparing <ArrowRight className="size-4" />
+              Start comparing{" "}
+              <ArrowRight className="size-4 transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5" />
             </Link>
           </Button>
         </div>

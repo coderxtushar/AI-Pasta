@@ -149,6 +149,7 @@ Dark is the default.
 - One colour per model, the same on every surface
 - Metrics in Geist Mono with tabular figures, beside every answer
 - One warm accent, reserved for live and attention signals
+- Motion that eases out (expo) from a visible end state: one authored entrance, the rest feedback
 
 ## Colors
 
@@ -295,6 +296,24 @@ The landing proof: a framed window replaying six answers at their own timings, w
 honest label ("Illustrative example" or "Replay of a recorded run · date"). Panels use a
 compact card variant: code blocks without a header bar and a one-line metric footer.
 
+### Motion
+- **Curve:** `cubic-bezier(0.16, 1, 0.3, 1)` (`ease-out-expo`) for arrivals; exits are faster than entrances.
+- **Focal moment (landing only):** the hero copy rises out of a blur in a short stagger, then the
+  replay window lands from below, tilted back, with one light pass along its top edge. The replay
+  starts once it has landed, with a run clock and a tangerine progress line in its title bar.
+- **Feedback:** buttons and model chips press (scale 0.98 / 0.97); keycaps sink 1px when their
+  shortcut is pressed; the copy icon swaps with a small zoom.
+- **State:** a model's dot pings while it streams; answers fade in over the skeleton; status
+  words cross-fade; badges and metric footers settle in when an answer finishes; after a blind
+  vote each real name resolves out of a blur and its dot fades from grey to the model's hue.
+  The composer's top edge carries a progress line for the share of answers finished.
+- **Continuity:** the nav highlight slides between sections; answer columns enter in a 50ms
+  stagger; sheets and dialogs open on the expo curve.
+- **Spotlight:** framed windows on the landing page catch light along their edge under a mouse
+  pointer. Feature frames settle in as they scroll into view, where the browser supports it.
+- **Reduced motion:** no travel, tilt, blur or loops. Entrances become fades, sheets fade in
+  place, and colour and opacity changes stay.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -304,6 +323,7 @@ compact card variant: code blocks without a header bar and a one-line metric foo
 - **Do** reserve tangerine for live and attention signals.
 - **Do** label any example data as an example, and any recorded run with its date.
 - **Do** give every shortcut you display (⌘K, ⌘↵, ↵) a working binding.
+- **Do** keep motion to feedback and state in the workspace; the authored entrance belongs to the landing hero.
 
 ### Don't:
 - **Don't** use pasta or food imagery, or a playful or cartoonish tone (confirmed by the
@@ -312,3 +332,4 @@ compact card variant: code blocks without a header bar and a one-line metric foo
 - **Don't** use the AI providers' brand colours for models.
 - **Don't** put shadows on flat cards or rows; only windows lift.
 - **Don't** use glyph characters in place of icons; use Lucide icons at one stroke.
+- **Don't** use bounce or elastic easing, or loop an animation that does not report live state.
