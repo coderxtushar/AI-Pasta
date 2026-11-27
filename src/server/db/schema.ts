@@ -3,6 +3,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -10,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import type { ProviderId } from "@/app/library/providers";
+import type { ComparisonSettings } from "@/app/library/settings";
 
 // ---- Auth.js tables (shape required by @auth/drizzle-adapter) ----
 
@@ -66,6 +68,8 @@ export const comparisons = pgTable(
     prompt: text("prompt").notNull(),
     models: text("models").array().notNull(),
     isPublic: boolean("isPublic").notNull().default(false),
+    /** Generation settings used for this run. Null means provider defaults. */
+    settings: jsonb("settings").$type<ComparisonSettings>(),
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("comparison_user_created_idx").on(t.userId, t.createdAt)]
@@ -111,6 +115,8 @@ export const responses = pgTable(
     reasoningTokens: integer("reasoningTokens"),
     costUsd: doublePrecision("costUsd"),
     finishReason: text("finishReason"),
+    /** Provider warnings, e.g. a setting the model ignored. */
+    notes: text("notes").array(),
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.comparisonId, t.modelId] })]

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { streamText } from "ai";
+import { streamText, type CallWarning } from "ai";
 import { z } from "zod";
 import { currentUserId } from "@/auth";
 import { MAX_PROMPT_CHARS } from "@/app/library/limits";
@@ -12,13 +12,18 @@ import { getLanguageModel } from "@/server/llm";
 import { describeProviderError } from "@/server/providerErrors";
 import { safeErrorMessage } from "@/app/library/redact";
 import { enforceRateLimit } from "@/server/rateLimit";
+import { GenerationSettingsSchema } from "@/server/settingsSchema";
+import {
+  DEFAULT_MAX_OUTPUT_TOKENS,
+  cleanSettings,
+  effectiveSettings,
+  type GenerationSettings,
+} from "@/app/library/settings";
 
 // The client opens one request per model, so each model gets its own time budget.
 export const maxDuration = 60;
 
 const TIMEOUT_MS = 55_000;
-// Reasoning models spend part of this budget thinking, so keep it generous.
-const MAX_OUTPUT_TOKENS = 4096;
 
 const RequestSchema = z.object({
   prompt: z
@@ -32,7 +37,28 @@ const RequestSchema = z.object({
   apiKey: z.string().trim().min(1, "`apiKey` must not be empty.").optional(),
   /** When set, the final response is saved to this comparison (owner only). */
   comparisonId: z.string().optional(),
+  /** This model's effective settings. Ignored with comparisonId (the saved ones win). */
+  settings: GenerationSettingsSchema.optional(),
 });
+
+const SETTING_NAMES: Record<string, string> = {
+  temperature: "Temperature",
+  topP: "Top-p",
+  maxOutputTokens: "Max tokens",
+};
+
+/** Turns provider warnings (e.g. a setting the model ignores) into short notes for the user. */
+function describeWarning(w: CallWarning): string | null {
+  if (w.type === "unsupported-setting") {
+    const setting = String(w.setting);
+    const name = SETTING_NAMES[setting] ?? setting;
+    if (!w.details) return `${name} isn't supported by this model and was ignored.`;
+    const details = w.details.replace(new RegExp(`^${setting}\\b`), name);
+    return details.charAt(0).toUpperCase() + details.slice(1);
+  }
+  if (w.type === "other") return w.message;
+  return null;
+}
 
 /**
  * One JSON line per model call, for log search and dashboards (e.g. Vercel logs).
@@ -109,6 +135,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  let settings: GenerationSettings = cleanSettings(parsed.data.settings);
+
   // Only the owner can save into a comparison, and only for its prompt and models.
   if (comparisonId) {
     const comparison = userId ? await getOwnedComparison(userId, comparisonId) : null;
@@ -118,6 +146,8 @@ export async function POST(req: NextRequest) {
     if (comparison.prompt !== prompt) {
       return NextResponse.json({ error: "Prompt does not match the comparison." }, { status: 400 });
     }
+    // The saved settings are what the history page shows, so they're what runs.
+    settings = effectiveSettings(comparison.settings, model.id);
   }
 
   const startedAt = performance.now();
@@ -128,8 +158,11 @@ export async function POST(req: NextRequest) {
 
   const result = streamText({
     model: getLanguageModel(model, apiKey),
+    system: settings.systemPrompt,
     prompt,
-    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    temperature: settings.temperature,
+    topP: settings.topP,
+    maxOutputTokens: settings.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
     // Retries 429/5xx/network errors with exponential backoff (2s, 4s). The
     // abort signal still caps the total time at TIMEOUT_MS.
     maxRetries: 2,
@@ -152,7 +185,12 @@ export async function POST(req: NextRequest) {
       let text = "";
       let ttftMs: number | null = null;
       let outcome: ResponseInput | null = null;
-      const baseMetrics = (): GenerateMetrics => ({ ttftMs, totalMs: elapsed() });
+      const notes = new Set<string>();
+      const baseMetrics = (): GenerateMetrics => ({
+        ttftMs,
+        totalMs: elapsed(),
+        ...(notes.size ? { notes: [...notes] } : {}),
+      });
       const fail = (message: string, status: "error" | "stopped" = "error") => {
         if (outcome) return;
         const metrics = baseMetrics();
@@ -166,6 +204,12 @@ export async function POST(req: NextRequest) {
         for await (const part of result.fullStream) {
           if (outcome) break;
           switch (part.type) {
+            case "start-step":
+              for (const w of part.warnings) {
+                const note = describeWarning(w);
+                if (note) notes.add(note);
+              }
+              break;
             case "text-delta":
               if (ttftMs === null) ttftMs = elapsed();
               text += part.text;

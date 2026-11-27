@@ -1,14 +1,20 @@
 import { and, desc, eq, ilike } from "drizzle-orm";
 import { db } from "./db";
 import { comparisons, responses, type ResponseStatus } from "./db/schema";
+import type { ComparisonSettings } from "@/app/library/settings";
 
 export type Comparison = typeof comparisons.$inferSelect;
 export type SavedResponse = typeof responses.$inferSelect;
 
-export async function createComparison(userId: string, prompt: string, models: string[]) {
+export async function createComparison(
+  userId: string,
+  prompt: string,
+  models: string[],
+  settings: ComparisonSettings | null = null
+) {
   const [row] = await db
     .insert(comparisons)
-    .values({ userId, prompt, models })
+    .values({ userId, prompt, models, settings })
     .returning({ id: comparisons.id });
   return row.id;
 }
@@ -68,6 +74,7 @@ export type ResponseInput = {
   reasoningTokens?: number;
   costUsd?: number;
   finishReason?: string;
+  notes?: string[];
 };
 
 export async function saveResponse(comparisonId: string, modelId: string, r: ResponseInput) {
@@ -82,6 +89,7 @@ export async function saveResponse(comparisonId: string, modelId: string, r: Res
     reasoningTokens: r.reasoningTokens ?? null,
     costUsd: r.costUsd ?? null,
     finishReason: r.finishReason ?? null,
+    notes: r.notes?.length ? r.notes : null,
   };
   await db
     .insert(responses)

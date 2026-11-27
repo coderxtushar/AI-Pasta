@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { APICallError, simulateReadableStream } from "ai";
 import { MockLanguageModelV2 } from "ai/test";
-import type { LanguageModelV2StreamPart } from "@ai-sdk/provider";
+import type { LanguageModelV2CallWarning, LanguageModelV2StreamPart } from "@ai-sdk/provider";
 import { NextRequest } from "next/server";
 import { readNdjson, type StreamEvent } from "@/app/library/stream";
 
@@ -21,8 +21,10 @@ const { getDecryptedApiKey, isKeyStorageEnabled, KeyDecryptionError } = await im
 const { enforceRateLimit } = await import("@/server/rateLimit");
 const { POST } = await import("./route");
 
-function textModel(parts: string[]) {
+function textModel(parts: string[], warnings: LanguageModelV2CallWarning[] = []) {
   const chunks: LanguageModelV2StreamPart[] = [
+    // Real providers report warnings (e.g. an ignored setting) in this first part.
+    { type: "stream-start", warnings },
     { type: "text-start", id: "t" },
     ...parts.map((delta): LanguageModelV2StreamPart => ({ type: "text-delta", id: "t", delta })),
     { type: "text-end", id: "t" },
@@ -171,6 +173,64 @@ describe("POST /api/generate: streaming", () => {
   });
 });
 
+describe("POST /api/generate: generation settings", () => {
+  function spyModel(warnings: LanguageModelV2CallWarning[] = []) {
+    const calls: Record<string, unknown>[] = [];
+    const model = new MockLanguageModelV2({
+      doStream: async (options) => {
+        calls.push(options as unknown as Record<string, unknown>);
+        return textModel(["ok"], warnings).doStream(options);
+      },
+    });
+    return { model, calls };
+  }
+
+  it("passes the system prompt and sampling settings to the model", async () => {
+    const { model, calls } = spyModel();
+    vi.mocked(getLanguageModel).mockReturnValue(model);
+    const settings = { systemPrompt: "Answer in French.", temperature: 0.3, topP: 0.8, maxOutputTokens: 256 };
+    await events(await POST(post({ ...base, settings })));
+    expect(calls[0]).toMatchObject({ temperature: 0.3, topP: 0.8, maxOutputTokens: 256 });
+    expect(calls[0].prompt).toEqual([
+      { role: "system", content: "Answer in French." },
+      expect.objectContaining({ role: "user" }),
+    ]);
+  });
+
+  it("uses provider defaults, and 4096 max tokens, when nothing is set", async () => {
+    const { model, calls } = spyModel();
+    vi.mocked(getLanguageModel).mockReturnValue(model);
+    await events(await POST(post(base)));
+    expect(calls[0]).toMatchObject({ temperature: undefined, topP: undefined, maxOutputTokens: 4096 });
+    expect((calls[0].prompt as { role: string }[])[0].role).toBe("user");
+  });
+
+  it.each([
+    [{ temperature: 2.5 }, "Temperature must be between 0 and 2."],
+    [{ topP: -0.1 }, "Top-p must be between 0 and 1."],
+    [{ maxOutputTokens: 10.5 }, "Max tokens must be a whole number."],
+    [{ seed: 1 }, "Unrecognized key"],
+  ])("rejects invalid settings %j", async (settings, message) => {
+    const res = await POST(post({ ...base, settings }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain(message);
+  });
+
+  it("reports settings the model ignored", async () => {
+    const { model } = spyModel([
+      { type: "unsupported-setting", setting: "temperature", details: "temperature is not supported for reasoning models" },
+      { type: "unsupported-setting", setting: "topP" },
+    ]);
+    vi.mocked(getLanguageModel).mockReturnValue(model);
+    const out = await events(await POST(post({ ...base, settings: { temperature: 0.5, topP: 0.5 } })));
+    const done = out.at(-1);
+    expect(done?.type === "done" && done.metrics.notes).toEqual([
+      "Temperature is not supported for reasoning models",
+      "Top-p isn't supported by this model and was ignored.",
+    ]);
+  });
+});
+
 describe("POST /api/generate: account keys", () => {
   const noKey = { prompt: "hi", model: "gpt-5.4-mini" };
 
@@ -211,6 +271,7 @@ describe("POST /api/generate: saving to history", () => {
     prompt: "hi",
     models: ["gpt-5.4-mini"],
     isPublic: false,
+    settings: null,
     createdAt: new Date(),
   };
 
@@ -237,6 +298,25 @@ describe("POST /api/generate: saving to history", () => {
       "gpt-5.4-mini",
       expect.objectContaining({ status: "done", text: "Hello", inputTokens: 10, outputTokens: 20 })
     );
+  });
+
+  it("runs with the saved settings, not the request's", async () => {
+    vi.mocked(currentUserId).mockResolvedValue("u1");
+    vi.mocked(getOwnedComparison).mockResolvedValue({
+      ...comparison,
+      settings: { all: { temperature: 0.1 }, perModel: { "gpt-5.4-mini": { maxOutputTokens: 500 } } },
+    });
+    const calls: Record<string, unknown>[] = [];
+    vi.mocked(getLanguageModel).mockReturnValue(
+      new MockLanguageModelV2({
+        doStream: async (options) => {
+          calls.push(options as unknown as Record<string, unknown>);
+          return textModel(["ok"]).doStream(options);
+        },
+      })
+    );
+    await events(await POST(post({ ...base, comparisonId: "c1", settings: { temperature: 1.9 } })));
+    expect(calls[0]).toMatchObject({ temperature: 0.1, maxOutputTokens: 500 });
   });
 
   it("saves failures too", async () => {

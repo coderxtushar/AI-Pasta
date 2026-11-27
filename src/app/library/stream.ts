@@ -9,6 +9,8 @@ export type GenerateMetrics = {
   reasoningTokens?: number;
   costUsd?: number;
   finishReason?: string;
+  /** Provider warnings, e.g. "temperature is not supported for reasoning models". */
+  notes?: string[];
 };
 
 export type StreamEvent =
