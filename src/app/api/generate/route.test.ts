@@ -272,6 +272,7 @@ describe("POST /api/generate: saving to history", () => {
     models: ["gpt-5.4-mini"],
     isPublic: false,
     settings: null,
+    blind: false,
     createdAt: new Date(),
   };
 

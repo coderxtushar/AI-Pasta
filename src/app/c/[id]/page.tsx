@@ -90,7 +90,7 @@ export default async function ComparisonPage({ params }: Props) {
   const { id } = await params;
   const found = await load(id);
   if (!found) notFound();
-  const { comparison, responses, isOwner } = found;
+  const { comparison, responses, isOwner, vote } = found;
   const byModel = new Map(responses.map((r) => [r.modelId, r]));
 
   return (
@@ -143,6 +143,16 @@ export default async function ComparisonPage({ params }: Props) {
           {comparison.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
         </time>
         <SettingsSummary settings={comparison.settings} />
+        {comparison.blind && (
+          <div style={{ marginTop: 6, fontSize: 13, color: "#374151" }}>
+            <strong>Blind comparison:</strong>{" "}
+            {!vote
+              ? "no vote was cast."
+              : vote.winnerModelId === null
+                ? `${isOwner ? "you" : "the author"} called it a tie.`
+                : `${isOwner ? "you" : "the author"} picked ${findModel(vote.winnerModelId)?.label ?? vote.winnerModelId} without seeing names.`}
+          </div>
+        )}
       </section>
 
       <div style={{ display: "grid", gap: 12 }}>
@@ -151,7 +161,14 @@ export default async function ComparisonPage({ params }: Props) {
           const state: RunState = saved
             ? toRunState(saved)
             : { status: "error", text: "", error: "No response saved yet." };
-          return <Model key={modelId} label={findModel(modelId)?.label ?? modelId} state={state} />;
+          return (
+            <Model
+              key={modelId}
+              label={findModel(modelId)?.label ?? modelId}
+              state={state}
+              badge={vote?.winnerModelId === modelId ? "Blind pick" : undefined}
+            />
+          );
         })}
       </div>
     </main>

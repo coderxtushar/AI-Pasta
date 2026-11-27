@@ -2,6 +2,7 @@ import { and, desc, eq, ilike } from "drizzle-orm";
 import { db } from "./db";
 import { comparisons, responses, type ResponseStatus } from "./db/schema";
 import type { ComparisonSettings } from "@/app/library/settings";
+import { getVote } from "./votes";
 
 export type Comparison = typeof comparisons.$inferSelect;
 export type SavedResponse = typeof responses.$inferSelect;
@@ -10,11 +11,11 @@ export async function createComparison(
   userId: string,
   prompt: string,
   models: string[],
-  settings: ComparisonSettings | null = null
+  options: { settings?: ComparisonSettings | null; blind?: boolean } = {}
 ) {
   const [row] = await db
     .insert(comparisons)
-    .values({ userId, prompt, models, settings })
+    .values({ userId, prompt, models, settings: options.settings ?? null, blind: options.blind ?? false })
     .returning({ id: comparisons.id });
   return row.id;
 }
@@ -37,8 +38,11 @@ export async function getComparisonForViewer(id: string, viewerId: string | null
   const isOwner = viewerId !== null && comparison.userId === viewerId;
   if (!isOwner && !comparison.isPublic) return null;
 
-  const rows = await db.select().from(responses).where(eq(responses.comparisonId, id));
-  return { comparison, responses: rows, isOwner };
+  const [rows, vote] = await Promise.all([
+    db.select().from(responses).where(eq(responses.comparisonId, id)),
+    comparison.blind ? getVote(id) : Promise.resolve(null),
+  ]);
+  return { comparison, responses: rows, isOwner, vote };
 }
 
 export async function listComparisons(userId: string, search?: string, limit = 50) {

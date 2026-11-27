@@ -70,6 +70,8 @@ export const comparisons = pgTable(
     isPublic: boolean("isPublic").notNull().default(false),
     /** Generation settings used for this run. Null means provider defaults. */
     settings: jsonb("settings").$type<ComparisonSettings>(),
+    /** Answers were shown anonymized (Model A/B/C) until the user voted. */
+    blind: boolean("blind").notNull().default(false),
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("comparison_user_created_idx").on(t.userId, t.createdAt)]
@@ -120,4 +122,20 @@ export const responses = pgTable(
     createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.comparisonId, t.modelId] })]
+);
+
+// One vote per blind comparison, by its owner. A null winner means "tie".
+export const votes = pgTable(
+  "vote",
+  {
+    comparisonId: text("comparisonId")
+      .primaryKey()
+      .references(() => comparisons.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    winnerModelId: text("winnerModelId"),
+    createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("vote_user_idx").on(t.userId)]
 );

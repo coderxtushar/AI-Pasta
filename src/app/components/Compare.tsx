@@ -10,6 +10,7 @@ import { clearKeys, hasAnyKey, loadKeys } from "../library/keys";
 import { saveKeyToAccount, upsertKey } from "../library/accountKeys";
 import { readNdjson, type StreamEvent } from "../library/stream";
 import SettingsPanel from "./SettingsPanel";
+import { blindLabel, shuffle } from "../library/blind";
 import {
   EMPTY_SETTINGS,
   compactSettings,
@@ -19,6 +20,16 @@ import {
 } from "../library/settings";
 
 const SETTINGS_STORAGE_KEY = "generationSettings";
+
+const voteButton: React.CSSProperties = {
+  padding: "6px 12px",
+  borderRadius: 8,
+  border: "1px solid #6366f1",
+  background: "#fff",
+  color: "#3730a3",
+  cursor: "pointer",
+  fontWeight: 600,
+};
 
 function loadStoredSettings(): ComparisonSettings | null {
   try {
@@ -60,6 +71,14 @@ export default function Compare({
   );
   const [settings, setSettings] = useState<ComparisonSettings>(initialSettings ?? EMPTY_SETTINGS);
   const [runOrder, setRunOrder] = useState<string[]>([]);
+  const [blind, setBlind] = useState(false);
+  // The current run's blind state. Null when the run wasn't blind.
+  const [blindRun, setBlindRun] = useState<{
+    revealed: boolean;
+    /** undefined: not voted yet; null: tie; otherwise the winning model ID. */
+    pick?: string | null;
+    saveError?: string;
+  } | null>(null);
   const [runs, setRuns] = useState<Record<string, RunState>>({});
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -189,9 +208,11 @@ export default function Compare({
     abortRef.current = controller;
     const runId = ++runIdRef.current;
 
-    // Keep the registry order so columns don't jump around between runs.
-    const ids = orderedSelection;
+    // Keep the registry order so columns don't jump around between runs; blind
+    // runs are shuffled so position doesn't give the models away.
+    const ids = blind ? shuffle(orderedSelection) : orderedSelection;
     setRunOrder(ids);
+    setBlindRun(blind ? { revealed: false } : null);
     setRuns(Object.fromEntries(ids.map((id) => [id, { status: "streaming", text: "" }])));
 
     const update = (id: number, modelId: string, fn: (prev: RunState) => RunState) => {
@@ -220,7 +241,7 @@ export default function Compare({
       const res = await fetch("/api/comparisons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, models: callable, settings: compactSettings(settings, callable) }),
+        body: JSON.stringify({ prompt, models: callable, settings: compactSettings(settings, callable), blind }),
         signal,
       });
       const data = await res.json().catch(() => null);
@@ -238,6 +259,29 @@ export default function Compare({
   function handleStop() {
     abortRef.current?.abort();
   }
+
+  /** Reveals the names and, for saved comparisons, records the pick (null = tie). */
+  async function vote(winner: string | null) {
+    setBlindRun({ revealed: true, pick: winner });
+    if (!savedId) return;
+    try {
+      const res = await fetch(`/api/comparisons/${savedId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ winner }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? `Server error ${res.status}`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setBlindRun({ revealed: true, pick: winner, saveError: `Vote not saved: ${message}` });
+    }
+  }
+
+  const answeredIds = runOrder.filter((id) => runs[id]?.status === "done");
+  const awaitingVote = blindRun !== null && !blindRun.revealed && !loading && runOrder.length > 0;
 
   /** Moves keys held in this browser into the account, then clears them locally. */
   async function moveBrowserKeys() {
@@ -370,6 +414,13 @@ export default function Compare({
 
               <SettingsPanel value={settings} onChange={changeSettings} modelIds={orderedSelection} />
 
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, marginBottom: 8 }}>
+                <input type="checkbox" checked={blind} onChange={(e) => setBlind(e.target.checked)} />
+                <span>
+                  <strong>Blind mode</strong>: hide model names until you pick the best answer
+                </span>
+              </label>
+
               <div style={{ marginTop: 8, display: "flex", gap: 12, alignItems: "center" }}>
                 <button
                   type="submit"
@@ -418,7 +469,8 @@ export default function Compare({
               <div style={{ color: "red", padding: 8, borderRadius: 6, background: "#fff0f0" }}>{error}</div>
             )}
 
-            {savedId && (
+            {/* Hidden during a blind vote: the saved page shows model names. */}
+            {savedId && (!blindRun || blindRun.revealed) && (
               <div style={{ fontSize: 13, color: "#374151" }}>
                 Saved to your history ·{" "}
                 <Link href={`/c/${savedId}`} style={{ color: "#2563eb" }}>
@@ -435,12 +487,75 @@ export default function Compare({
               <div style={{ marginTop: 12, color: "#6b7280" }}>No results yet. Submit a prompt to compare.</div>
             )}
 
+            {awaitingVote && (
+              <div
+                role="group"
+                aria-label="Blind vote"
+                style={{
+                  marginTop: 12,
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid #c7d2fe",
+                  background: "#eef2ff",
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  fontSize: 14,
+                }}
+              >
+                {answeredIds.length >= 2 ? (
+                  <>
+                    <span style={{ flex: 1, minWidth: 220 }}>Which answer is best? Names are revealed after you vote.</span>
+                    <button type="button" onClick={() => vote(null)} style={voteButton}>
+                      It&apos;s a tie
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ flex: 1, minWidth: 220 }}>Fewer than two models answered, so there&apos;s nothing to vote on.</span>
+                    <button type="button" onClick={() => setBlindRun({ revealed: true })} style={voteButton}>
+                      Reveal names
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+            {blindRun?.revealed && (
+              <div role="status" style={{ marginTop: 12, fontSize: 14 }}>
+                {blindRun.pick === undefined
+                  ? "Names revealed."
+                  : blindRun.pick === null
+                    ? "You called it a tie."
+                    : `You picked ${findModel(blindRun.pick)?.label ?? blindRun.pick}.`}
+                {savedId && blindRun.pick !== undefined && !blindRun.saveError && " Saved to your leaderboard."}
+                {blindRun.saveError && <span style={{ color: "#b91c1c" }}> {blindRun.saveError}</span>}
+              </div>
+            )}
+
             <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-              {runOrder.map((id) =>
-                runs[id] ? (
-                  <Model key={id} label={findModel(id)?.label ?? id} state={runs[id]} />
-                ) : null
-              )}
+              {runOrder.map((id, index) => {
+                if (!runs[id]) return null;
+                const hidden = blindRun !== null && !blindRun.revealed;
+                const name = findModel(id)?.label ?? id;
+                return (
+                  <Model
+                    key={id}
+                    label={hidden ? blindLabel(index) : name}
+                    subtitle={blindRun?.revealed ? `was ${blindLabel(index)}` : undefined}
+                    badge={blindRun?.revealed && blindRun.pick === id ? "Your pick" : undefined}
+                    anonymous={hidden}
+                    state={runs[id]}
+                    footer={
+                      awaitingVote && answeredIds.length >= 2 && runs[id].status === "done" ? (
+                        <button type="button" onClick={() => vote(id)} style={{ ...voteButton, marginTop: 10 }}>
+                          Pick {blindLabel(index)}
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                );
+              })}
             </div>
           </div>
         </div>

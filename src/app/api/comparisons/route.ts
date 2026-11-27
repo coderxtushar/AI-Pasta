@@ -18,6 +18,7 @@ const RequestSchema = z.object({
     .min(1, "Pick at least one model.")
     .max(20),
   settings: ComparisonSettingsSchema.optional(),
+  blind: z.boolean().optional(),
 });
 
 /** Creates a history entry; each model's response is saved by /api/generate. */
@@ -39,6 +40,9 @@ export async function POST(req: NextRequest) {
   const models = [...new Set(parsed.data.models)];
   const settings = parsed.data.settings ? compactSettings(parsed.data.settings, models) : null;
   const hasSettings = settings && (!isEmpty(settings.all) || Object.keys(settings.perModel).length > 0);
-  const id = await createComparison(userId, parsed.data.prompt, models, hasSettings ? settings : null);
+  const id = await createComparison(userId, parsed.data.prompt, models, {
+    settings: hasSettings ? settings : null,
+    blind: parsed.data.blind ?? false,
+  });
   return NextResponse.json({ id }, { status: 201 });
 }
