@@ -1,0 +1,562 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-27T08:05:44.394148+00:00",
+  "title": "Design System: AI Pasta",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Ground",
+        "canonical": "oklch(0.13 0.004 260)",
+        "lightValue": "oklch(0.985 0.002 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.001 260)",
+          "oklch(0.26 0.002 260)",
+          "oklch(0.38 0.003 260)",
+          "oklch(0.49 0.004 260)",
+          "oklch(0.61 0.004 260)",
+          "oklch(0.72 0.003 260)",
+          "oklch(0.84 0.002 260)",
+          "oklch(0.95 0.001 260)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "oklch(0.165 0.005 260)",
+        "lightValue": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0.001 260)",
+          "oklch(0.26 0.003 260)",
+          "oklch(0.38 0.004 260)",
+          "oklch(0.49 0.005 260)",
+          "oklch(0.61 0.005 260)",
+          "oklch(0.72 0.004 260)",
+          "oklch(0.84 0.003 260)",
+          "oklch(0.95 0.001 260)"
+        ]
+      },
+      "surface-raised": {
+        "role": "neutral",
+        "displayName": "Raised",
+        "canonical": "oklch(0.195 0.006 260)",
+        "lightValue": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0.002 260)",
+          "oklch(0.26 0.003 260)",
+          "oklch(0.38 0.005 260)",
+          "oklch(0.49 0.006 260)",
+          "oklch(0.61 0.006 260)",
+          "oklch(0.72 0.005 260)",
+          "oklch(0.84 0.003 260)",
+          "oklch(0.95 0.002 260)"
+        ]
+      },
+      "surface-subtle": {
+        "role": "neutral",
+        "displayName": "Subtle",
+        "canonical": "oklch(0.15 0.004 260)",
+        "lightValue": "oklch(0.965 0.003 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.001 260)",
+          "oklch(0.26 0.002 260)",
+          "oklch(0.38 0.003 260)",
+          "oklch(0.49 0.004 260)",
+          "oklch(0.61 0.004 260)",
+          "oklch(0.72 0.003 260)",
+          "oklch(0.84 0.002 260)",
+          "oklch(0.95 0.001 260)"
+        ]
+      },
+      "popover": {
+        "role": "neutral",
+        "displayName": "Popover",
+        "canonical": "oklch(0.2 0.006 260)",
+        "lightValue": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0.002 260)",
+          "oklch(0.26 0.003 260)",
+          "oklch(0.38 0.005 260)",
+          "oklch(0.49 0.006 260)",
+          "oklch(0.61 0.006 260)",
+          "oklch(0.72 0.005 260)",
+          "oklch(0.84 0.003 260)",
+          "oklch(0.95 0.002 260)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "canonical": "oklch(0.2 0.005 260)",
+        "lightValue": "oklch(0.955 0.003 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.001 260)",
+          "oklch(0.26 0.003 260)",
+          "oklch(0.38 0.004 260)",
+          "oklch(0.49 0.005 260)",
+          "oklch(0.61 0.005 260)",
+          "oklch(0.72 0.004 260)",
+          "oklch(0.84 0.003 260)",
+          "oklch(0.95 0.001 260)"
+        ]
+      },
+      "accent-tint": {
+        "role": "neutral",
+        "displayName": "Accent Tint",
+        "canonical": "oklch(0.24 0.006 260)",
+        "lightValue": "oklch(0.94 0.004 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.002 260)",
+          "oklch(0.26 0.003 260)",
+          "oklch(0.38 0.005 260)",
+          "oklch(0.49 0.006 260)",
+          "oklch(0.61 0.006 260)",
+          "oklch(0.72 0.005 260)",
+          "oklch(0.84 0.003 260)",
+          "oklch(0.95 0.002 260)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.94 0.003 260)",
+        "lightValue": "oklch(0.2 0.006 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.001 260)",
+          "oklch(0.26 0.002 260)",
+          "oklch(0.38 0.002 260)",
+          "oklch(0.49 0.003 260)",
+          "oklch(0.61 0.003 260)",
+          "oklch(0.72 0.002 260)",
+          "oklch(0.84 0.002 260)",
+          "oklch(0.95 0.001 260)"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "oklch(0.7 0.01 260)",
+        "lightValue": "oklch(0.47 0.01 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.003 260)",
+          "oklch(0.26 0.005 260)",
+          "oklch(0.38 0.008 260)",
+          "oklch(0.49 0.010 260)",
+          "oklch(0.61 0.010 260)",
+          "oklch(0.72 0.008 260)",
+          "oklch(0.84 0.005 260)",
+          "oklch(0.95 0.003 260)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(1 0 0 / 8%)",
+        "lightValue": "oklch(0.2 0.006 260 / 10%)",
+        "tonalRamp": [
+          "oklch(0.15 0.000 0)",
+          "oklch(0.26 0.000 0)",
+          "oklch(0.38 0.000 0)",
+          "oklch(0.49 0.000 0)",
+          "oklch(0.61 0.000 0)",
+          "oklch(0.72 0.000 0)",
+          "oklch(0.84 0.000 0)",
+          "oklch(0.95 0.000 0)"
+        ]
+      },
+      "field-line": {
+        "role": "neutral",
+        "displayName": "Field Line",
+        "canonical": "oklch(1 0 0 / 12%)",
+        "lightValue": "oklch(0.2 0.006 260 / 14%)",
+        "tonalRamp": [
+          "oklch(0.15 0.000 0)",
+          "oklch(0.26 0.000 0)",
+          "oklch(0.38 0.000 0)",
+          "oklch(0.49 0.000 0)",
+          "oklch(0.61 0.000 0)",
+          "oklch(0.72 0.000 0)",
+          "oklch(0.84 0.000 0)",
+          "oklch(0.95 0.000 0)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Inverted Ink",
+        "canonical": "oklch(0.94 0.003 260)",
+        "lightValue": "oklch(0.2 0.006 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.001 260)",
+          "oklch(0.26 0.002 260)",
+          "oklch(0.38 0.002 260)",
+          "oklch(0.49 0.003 260)",
+          "oklch(0.61 0.003 260)",
+          "oklch(0.72 0.002 260)",
+          "oklch(0.84 0.002 260)",
+          "oklch(0.95 0.001 260)"
+        ]
+      },
+      "on-primary": {
+        "role": "primary",
+        "displayName": "On Inverted Ink",
+        "canonical": "oklch(0.15 0.004 260)",
+        "lightValue": "oklch(0.985 0.002 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.001 260)",
+          "oklch(0.26 0.002 260)",
+          "oklch(0.38 0.003 260)",
+          "oklch(0.49 0.004 260)",
+          "oklch(0.61 0.004 260)",
+          "oklch(0.72 0.003 260)",
+          "oklch(0.84 0.002 260)",
+          "oklch(0.95 0.001 260)"
+        ]
+      },
+      "signal-tangerine": {
+        "role": "secondary",
+        "displayName": "Signal Tangerine",
+        "canonical": "oklch(0.74 0.16 50)",
+        "lightValue": "oklch(0.64 0.18 45)",
+        "tonalRamp": [
+          "oklch(0.15 0.040 50)",
+          "oklch(0.26 0.086 50)",
+          "oklch(0.38 0.131 50)",
+          "oklch(0.49 0.160 50)",
+          "oklch(0.61 0.160 50)",
+          "oklch(0.72 0.131 50)",
+          "oklch(0.84 0.086 50)",
+          "oklch(0.95 0.040 50)"
+        ]
+      },
+      "success": {
+        "role": "tertiary",
+        "displayName": "Success Green",
+        "canonical": "oklch(0.78 0.15 155)",
+        "lightValue": "oklch(0.55 0.14 155)",
+        "tonalRamp": [
+          "oklch(0.15 0.037 155)",
+          "oklch(0.26 0.080 155)",
+          "oklch(0.38 0.123 155)",
+          "oklch(0.49 0.150 155)",
+          "oklch(0.61 0.150 155)",
+          "oklch(0.72 0.123 155)",
+          "oklch(0.84 0.080 155)",
+          "oklch(0.95 0.037 155)"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Warning Amber",
+        "canonical": "oklch(0.82 0.13 80)",
+        "lightValue": "oklch(0.6 0.14 75)",
+        "tonalRamp": [
+          "oklch(0.15 0.033 80)",
+          "oklch(0.26 0.070 80)",
+          "oklch(0.38 0.107 80)",
+          "oklch(0.49 0.130 80)",
+          "oklch(0.61 0.130 80)",
+          "oklch(0.72 0.107 80)",
+          "oklch(0.84 0.070 80)",
+          "oklch(0.95 0.033 80)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "oklch(0.7 0.17 22)",
+        "lightValue": "oklch(0.56 0.2 25)",
+        "tonalRamp": [
+          "oklch(0.15 0.043 22)",
+          "oklch(0.26 0.091 22)",
+          "oklch(0.38 0.140 22)",
+          "oklch(0.49 0.170 22)",
+          "oklch(0.61 0.170 22)",
+          "oklch(0.72 0.140 22)",
+          "oklch(0.84 0.091 22)",
+          "oklch(0.95 0.043 22)"
+        ]
+      },
+      "model-1": {
+        "role": "tertiary",
+        "displayName": "Model Hue 1 (GPT-5.4 Mini)",
+        "canonical": "oklch(0.72 0.13 255)",
+        "lightValue": "oklch(0.55 0.16 255)",
+        "tonalRamp": [
+          "oklch(0.15 0.033 255)",
+          "oklch(0.26 0.070 255)",
+          "oklch(0.38 0.107 255)",
+          "oklch(0.49 0.130 255)",
+          "oklch(0.61 0.130 255)",
+          "oklch(0.72 0.107 255)",
+          "oklch(0.84 0.070 255)",
+          "oklch(0.95 0.033 255)"
+        ]
+      },
+      "model-2": {
+        "role": "tertiary",
+        "displayName": "Model Hue 2 (Claude Sonnet 5.5)",
+        "canonical": "oklch(0.78 0.13 60)",
+        "lightValue": "oklch(0.6 0.15 55)",
+        "tonalRamp": [
+          "oklch(0.15 0.033 60)",
+          "oklch(0.26 0.070 60)",
+          "oklch(0.38 0.107 60)",
+          "oklch(0.49 0.130 60)",
+          "oklch(0.61 0.130 60)",
+          "oklch(0.72 0.107 60)",
+          "oklch(0.84 0.070 60)",
+          "oklch(0.95 0.033 60)"
+        ]
+      },
+      "model-3": {
+        "role": "tertiary",
+        "displayName": "Model Hue 3 (Gemini Flash)",
+        "canonical": "oklch(0.78 0.11 170)",
+        "lightValue": "oklch(0.55 0.12 165)",
+        "tonalRamp": [
+          "oklch(0.15 0.028 170)",
+          "oklch(0.26 0.059 170)",
+          "oklch(0.38 0.090 170)",
+          "oklch(0.49 0.110 170)",
+          "oklch(0.61 0.110 170)",
+          "oklch(0.72 0.090 170)",
+          "oklch(0.84 0.059 170)",
+          "oklch(0.95 0.028 170)"
+        ]
+      },
+      "model-4": {
+        "role": "tertiary",
+        "displayName": "Model Hue 4 (DeepSeek Chat)",
+        "canonical": "oklch(0.72 0.15 10)",
+        "lightValue": "oklch(0.56 0.18 10)",
+        "tonalRamp": [
+          "oklch(0.15 0.037 10)",
+          "oklch(0.26 0.080 10)",
+          "oklch(0.38 0.123 10)",
+          "oklch(0.49 0.150 10)",
+          "oklch(0.61 0.150 10)",
+          "oklch(0.72 0.123 10)",
+          "oklch(0.84 0.080 10)",
+          "oklch(0.95 0.037 10)"
+        ]
+      },
+      "model-5": {
+        "role": "tertiary",
+        "displayName": "Model Hue 5 (GPT-OSS 120B)",
+        "canonical": "oklch(0.72 0.13 295)",
+        "lightValue": "oklch(0.52 0.17 295)",
+        "tonalRamp": [
+          "oklch(0.15 0.033 295)",
+          "oklch(0.26 0.070 295)",
+          "oklch(0.38 0.107 295)",
+          "oklch(0.49 0.130 295)",
+          "oklch(0.61 0.130 295)",
+          "oklch(0.72 0.107 295)",
+          "oklch(0.84 0.070 295)",
+          "oklch(0.95 0.033 295)"
+        ]
+      },
+      "model-6": {
+        "role": "tertiary",
+        "displayName": "Model Hue 6 (Qwen Plus)",
+        "canonical": "oklch(0.85 0.12 95)",
+        "lightValue": "oklch(0.6 0.13 90)",
+        "tonalRamp": [
+          "oklch(0.15 0.030 95)",
+          "oklch(0.26 0.064 95)",
+          "oklch(0.38 0.099 95)",
+          "oklch(0.49 0.120 95)",
+          "oklch(0.61 0.120 95)",
+          "oklch(0.72 0.099 95)",
+          "oklch(0.84 0.064 95)",
+          "oklch(0.95 0.030 95)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The landing headline only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Landing section titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Page titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Landing copy and descriptions, about 65ch."
+      },
+      "answer": {
+        "displayName": "Answer",
+        "purpose": "Model answers rendered as Markdown."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Chips, card titles, form labels."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Latency, token and cost readouts, tabular."
+      }
+    },
+    "shadows": [
+      {
+        "name": "window-dark",
+        "value": "0 1px 0 0 oklch(1 0 0 / 6%) inset, 0 30px 60px -20px oklch(0 0 0 / 70%), 0 8px 24px -8px oklch(0 0 0 / 50%)",
+        "purpose": "Framed windows only (composer, follow-up box, landing replay and feature frames), dark theme."
+      },
+      {
+        "name": "window-light",
+        "value": "0 1px 0 0 oklch(1 0 0 / 60%) inset, 0 24px 48px -16px oklch(0.2 0.02 260 / 22%), 0 4px 12px -4px oklch(0.2 0.02 260 / 10%)",
+        "purpose": "Framed windows only, light theme."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Entrances and sheet transitions."
+      },
+      {
+        "name": "caret-blink",
+        "value": "1s steps(1) infinite",
+        "purpose": "Streaming caret at the end of an answer while tokens arrive."
+      },
+      {
+        "name": "replay",
+        "value": "each answer from its time to first token to its total time, at most 6s",
+        "purpose": "The landing replay; reduced motion shows the finished run."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action in an area: Compare, Start comparing, Run batch.",
+      "html": "<button class=\"ds-btn-primary\">Compare <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m5 12 7-7 7 7\"/><path d=\"M12 19V5\"/></svg></button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 16px; border:none; border-radius:8px; background:var(--primary); color:var(--primary-foreground); font:500 14px/1 var(--font-geist-sans, system-ui); cursor:pointer; transition:background .15s; } .ds-btn-primary:hover { background:color-mix(in oklch, var(--primary) 90%, transparent); } .ds-btn-primary:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Stop, Judge answers, Try this prompt.",
+      "html": "<button class=\"ds-btn-secondary\">Stop</button>",
+      "css": ".ds-btn-secondary { height:36px; padding:0 16px; border:none; border-radius:8px; background:var(--secondary); color:var(--secondary-foreground); font:500 14px/1 var(--font-geist-sans, system-ui); cursor:pointer; } .ds-btn-secondary:hover { background:color-mix(in oklch, var(--secondary) 80%, transparent); } .ds-btn-secondary:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Toolbar actions: Export CSV, Compare answers, New comparison.",
+      "html": "<button class=\"ds-btn-ghost\">Export CSV</button>",
+      "css": ".ds-btn-ghost { height:32px; padding:0 12px; border:none; border-radius:8px; background:transparent; color:var(--muted-foreground); font:500 14px/1 var(--font-geist-sans, system-ui); cursor:pointer; } .ds-btn-ghost:hover { background:var(--accent); color:var(--foreground); } .ds-btn-ghost:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
+    },
+    {
+      "name": "Model Chip",
+      "kind": "chip",
+      "refersTo": "model-chip-selected",
+      "description": "Selects a model for a comparison; the dot carries the model's hue.",
+      "html": "<label class=\"ds-chip ds-chip-on\"><span class=\"ds-dot\" style=\"background:var(--model-2)\"></span>Claude Sonnet 5.5</label> <label class=\"ds-chip\"><span class=\"ds-dot\" style=\"background:var(--model-3);opacity:.4\"></span>Gemini Flash <span class=\"ds-hint\">no key</span></label>",
+      "css": ".ds-chip { display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 12px; border:1px solid var(--border); border-radius:9999px; color:var(--muted-foreground); font:400 13px/1 var(--font-geist-sans, system-ui); cursor:pointer; } .ds-chip:hover { color:var(--foreground); } .ds-chip-on { background:var(--accent); color:var(--foreground); border-color:color-mix(in oklch, var(--foreground) 20%, transparent); } .ds-dot { width:8px; height:8px; border-radius:9999px; } .ds-hint { font-size:11px; opacity:.7; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Single-line fields such as API keys and search.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search prompts…\" />",
+      "css": ".ds-input { height:36px; width:280px; padding:0 12px; border:1px solid var(--input); border-radius:8px; background:transparent; color:var(--foreground); caret-color:var(--brand); font:400 14px/1 var(--font-geist-sans, system-ui); } .ds-input::placeholder { color:var(--muted-foreground); } .ds-input:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }"
+    },
+    {
+      "name": "Answer Card",
+      "kind": "card",
+      "refersTo": "answer-card",
+      "description": "One model's answer with its status and a mono metric footer.",
+      "html": "<section class=\"ds-card\"><header class=\"ds-card-h\"><span class=\"ds-dot\" style=\"background:var(--model-4)\"></span><b>DeepSeek Chat</b><span class=\"ds-badge\">Fastest</span><span class=\"ds-done\">Done</span></header><div class=\"ds-card-b\">Ranks each customer's orders by date and keeps the top three.</div><footer class=\"ds-card-f\">first token 1.15s · total 4.48s · 36 in / 131 out tokens · cost —</footer></section>",
+      "css": ".ds-card { width:340px; border:1px solid var(--border); border-radius:14px; background:var(--card); color:var(--card-foreground); overflow:hidden; font-family:var(--font-geist-sans, system-ui); } .ds-card-h { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); font-size:14px; } .ds-card-h b { font-weight:600; } .ds-badge { margin-left:auto; padding:2px 8px; border-radius:9999px; background:color-mix(in oklch, var(--success) 15%, transparent); color:var(--success); font-size:11px; font-weight:500; } .ds-done { color:var(--success); font-size:12px; font-weight:500; } .ds-card-b { padding:12px 14px; font-size:14px; line-height:1.65; } .ds-card-f { padding:8px 14px; border-top:1px solid var(--border); background:var(--subtle); color:var(--muted-foreground); font:400 11.5px/1.75 var(--font-geist-mono, ui-monospace); font-variant-numeric:tabular-nums; } .ds-dot { width:10px; height:10px; border-radius:9999px; }"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "description": "Sticky top bar with section links; the active link takes the accent tint.",
+      "html": "<nav class=\"ds-nav\"><b>AI Pasta</b><a class=\"ds-nav-on\">Compare</a><a>Batch</a><a>History</a><span class=\"ds-nav-cta\">Start comparing</span></nav>",
+      "css": ".ds-nav { display:flex; align-items:center; gap:8px; height:56px; padding:0 24px; border-bottom:1px solid var(--border); background:color-mix(in oklch, var(--background) 85%, transparent); font:400 14px/1 var(--font-geist-sans, system-ui); } .ds-nav b { font-weight:600; margin-right:12px; } .ds-nav a { padding:6px 10px; border-radius:6px; color:var(--muted-foreground); cursor:pointer; } .ds-nav a:hover { color:var(--foreground); } .ds-nav .ds-nav-on { background:var(--accent); color:var(--foreground); } .ds-nav-cta { margin-left:auto; padding:8px 12px; border-radius:8px; background:var(--primary); color:var(--primary-foreground); font-weight:500; }"
+    },
+    {
+      "name": "Keycap",
+      "kind": "custom",
+      "refersTo": "keycap",
+      "description": "Keyboard hints; every one shown has a working binding.",
+      "html": "<kbd class=\"ds-kbd\">⌘</kbd> <kbd class=\"ds-kbd\">K</kbd>",
+      "css": ".ds-kbd { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 4px; border-radius:6px; background:var(--muted); color:var(--muted-foreground); font:500 12px/1 var(--font-geist-sans, system-ui); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Lights Down, Numbers Up",
+    "overview": "AI Pasta is a dark, low-glare developer tool where the only loud things are the answers\nand their numbers. Surfaces are near-black and cool, stepping up in brightness as they\ncome forward. Borders are single translucent hairlines. Colour does work: one steady hue\nper model, green, amber and red for status, and one warm tangerine signal for anything\nlive. The look is deliberately the category standard (the dark developer-tool page)\nexecuted at Raycast's level of craft: conventions taken straight, with no ironic or\nquirky twist.\n\nDensity is comfortable rather than cramped. Comparing six answers side by side is the\ncore experience, so the workspace gives columns the width and height, and keeps chrome\nin a single composer card above them. Every answer carries its time to first token,\ntotal time, tokens and cost in a mono line beneath it.\n\nA light theme exists with matching tokens (see the sidecar's `colorMeta.lightValue`).\nDark is the default.",
+    "keyCharacteristics": [
+      "Near-black cool ground, three surface steps, 1px white-alpha hairlines",
+      "Light-on-dark primary buttons; keyboard hints as keycaps",
+      "One colour per model, the same on every surface",
+      "Metrics in Geist Mono with tabular figures, beside every answer",
+      "One warm accent, reserved for live and attention signals"
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Tangerine marks only what is live or needs attention. It never",
+        "section": "colors"
+      },
+      {
+        "name": "The Steady Hue Rule",
+        "body": "A model keeps its hue everywhere. When a comparison is blind,",
+        "section": "colors"
+      },
+      {
+        "name": "The Numbers-Up Rule",
+        "body": "Measurements are always set in Geist Mono with tabular figures",
+        "section": "typography"
+      },
+      {
+        "name": "The Window Rule",
+        "body": "Only an element that behaves like an app window gets a shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do show latency, tokens and cost beside every answer, in Geist Mono with tabular figures.",
+      "Do keep each model's hue identical on every surface, and grey while blind.",
+      "Do reserve tangerine for live and attention signals.",
+      "Do label any example data as an example, and any recorded run with its date.",
+      "Do give every shortcut you display (⌘K, ⌘↵, ↵) a working binding."
+    ],
+    "donts": [
+      "Don't use pasta or food imagery, or a playful or cartoonish tone (confirmed by the owner).",
+      "Don't invent proof: no customer logos, testimonials, usage numbers or benchmarks.",
+      "Don't use the AI providers' brand colours for models.",
+      "Don't put shadows on flat cards or rows; only windows lift.",
+      "Don't use glyph characters in place of icons; use Lucide icons at one stroke."
+    ]
+  }
+}

@@ -50,6 +50,42 @@ their account.
 
 Built with Next.js 15, the Vercel AI SDK, Auth.js (Google sign-in), Drizzle ORM and Postgres.
 
+## Pages and shortcuts
+
+- `/` is the landing page. It replays an example comparison at each model's real
+  timing. Press <kbd>Enter</kbd> or "Start comparing" to open the workspace.
+- `/app` is the workspace. Old `/?from=<id>` re-run links redirect here, and
+  `/app?prompt=...` prefills the prompt.
+- `/batch`, `/history`, `/leaderboard` and `/c/<id>` are batch runs, saved
+  comparisons, the blind leaderboard and a single comparison.
+
+| Shortcut | Action |
+| --- | --- |
+| <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> | Compare (in the prompt box) |
+| <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd> | Command menu: new comparison, models, blind mode, keys, settings, export, pages, theme |
+| <kbd>Enter</kbd> on the landing page | Open the workspace |
+
+The interface is dark by default with a light theme in the header menu. The visual
+system (tokens, type, components and rules) is written down in [`DESIGN.md`](DESIGN.md),
+with machine-readable tokens in `.impeccable/design.json`, and the product brief in
+[`PRODUCT.md`](PRODUCT.md). Tokens live in `src/app/globals.css` (Tailwind v4 with
+shadcn/ui components in `src/components/ui`).
+
+### Recording the landing demo
+
+The landing replay ships with a hand-written example and says so on the page. To
+replace it with a real run, put provider keys in your environment and run:
+
+```bash
+npm run demo:capture -- "Your prompt here"
+```
+
+It streams the prompt to every model you have a key for (`OPENAI_API_KEY`,
+`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `GROQ_API_KEY`,
+`DASHSCOPE_API_KEY`; at least two), records real timings, tokens and cost, and
+writes `src/app/library/demo-run.json`. The page then labels it as a recorded run
+with its date.
+
 ## Quick start (no account features)
 
 ```bash
@@ -57,7 +93,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000, paste your provider API keys in the **API Keys** panel,
+Open http://localhost:3000/app, paste your provider API keys under **API keys**,
 and compare. Keys stay in your browser's localStorage and are sent only with the
 request for that provider's model.
 
@@ -207,6 +243,7 @@ Limits live in `src/server/rateLimit.ts`. Over the limit, the API returns 429 wi
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:e2e` | End-to-end tests (Playwright); run `npm run build` first |
 | `npm run keys:rotate` | Re-encrypt saved keys after changing `KEYS_ENCRYPTION_KEY` |
+| `npm run demo:capture -- "prompt"` | Record a real run for the landing replay |
 | `npm run db:generate` | Create a migration after editing `src/server/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations to `DATABASE_URL` |
 | `npm run db:studio` | Browse the database in Drizzle Studio |
@@ -229,6 +266,7 @@ Limits live in `src/server/rateLimit.ts`. Over the limit, the API returns 429 wi
   - history, search and delete
   - sharing and privacy
   - a check that saved keys never appear in any response
+  - the landing page, replay, command menu, retry, diff and theme
 
   To run them locally, start the README's Docker Postgres, then:
 
@@ -248,14 +286,20 @@ Limits live in `src/server/rateLimit.ts`. Over the limit, the API returns 429 wi
 ```
 src/
   app/
-    page.tsx                 Home (server): session + "re-run" prefill
-    components/Compare.tsx   Compare UI: streams one request per model
+    page.tsx                 Landing page with the demo replay
+    app/page.tsx             Workspace (server): session + "re-run" prefill
+    components/Compare.tsx   Workspace UI: streams one request per model
     api/generate/            Streams one model's answer (NDJSON), saves it if signed in
     api/comparisons/         Creates a history entry
     api/keys/                Save, list (hints only) and remove account keys
     history/                 Saved comparisons: search, re-run, delete
     c/[id]/                  One comparison; public when shared
     library/                 Model registry, pricing, stream format (client-safe)
+  components/
+    ui/                      shadcn/ui primitives
+    site/                    Header, navigation, theme, page shells
+    workspace/               Answer rendering, keys sheet, diff, command menu
+    landing/                 Demo replay
   server/
     llm.ts                   Provider setup for the AI SDK
     comparisons.ts           History queries
@@ -269,6 +313,7 @@ src/
 drizzle/                     SQL migrations
 e2e/                         Playwright tests and mock provider
 scripts/rotate-keys.ts       Encryption key rotation
+scripts/capture-demo.ts      Records the landing demo run
 ```
 
 Models and prices live in `src/app/library/models.ts`. Adding a model is one entry.
