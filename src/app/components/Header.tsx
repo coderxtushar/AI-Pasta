@@ -1,64 +1,56 @@
 import Link from "next/link";
+import { Github } from "lucide-react";
 import { getSessionSafe, isAuthConfigured } from "@/auth";
+import { Button } from "@/components/ui/button";
+import { NavLinks, type NavItem } from "@/components/site/nav-links";
+import { MobileNav } from "@/components/site/mobile-nav";
+import { ThemeToggle } from "@/components/site/theme-toggle";
+import { UserMenu } from "@/components/site/user-menu";
+import { REPO_URL } from "../library/site";
 import { signInAction, signOutAction } from "../actions";
-
-const buttonStyle: React.CSSProperties = {
-  padding: "6px 12px",
-  borderRadius: 8,
-  border: "1px solid #d1d5db",
-  background: "#fff",
-  cursor: "pointer",
-  fontSize: 14,
-};
 
 export default async function Header() {
   const configured = isAuthConfigured();
   const session = await getSessionSafe();
+  const user = session?.user;
+
+  const items: NavItem[] = [
+    { href: "/app", label: "Compare" },
+    { href: "/batch", label: "Batch" },
+    ...(user
+      ? [
+          { href: "/history", label: "History" },
+          { href: "/leaderboard", label: "Leaderboard" },
+        ]
+      : []),
+  ];
 
   return (
-    <header
-      style={{
-        maxWidth: 1100,
-        margin: "0 auto",
-        padding: "14px 20px 0",
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-      }}
-    >
-      <Link href="/" style={{ fontWeight: 700, fontSize: 18 }}>
-        AI Pasta
-      </Link>
-      <Link href="/batch" style={{ fontSize: 14, color: "#2563eb" }}>
-        Batch
-      </Link>
-      {session?.user && (
-        <>
-          <Link href="/history" style={{ fontSize: 14, color: "#2563eb" }}>
-            History
-          </Link>
-          <Link href="/leaderboard" style={{ fontSize: 14, color: "#2563eb" }}>
-            Leaderboard
-          </Link>
-        </>
-      )}
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-        {session?.user ? (
-          <>
-            <span style={{ fontSize: 14, color: "#374151" }}>{session.user.name ?? session.user.email}</span>
-            <form action={signOutAction}>
-              <button type="submit" style={buttonStyle}>
-                Sign out
-              </button>
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4 sm:gap-5 sm:px-6">
+        <MobileNav items={items} />
+        <Link href="/" className="text-[15px] font-semibold tracking-tight">
+          AI Pasta
+        </Link>
+        <NavLinks items={items} />
+
+        <div className="ml-auto flex items-center gap-1">
+          <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
+            <a href={REPO_URL} target="_blank" rel="noreferrer" aria-label="AI Pasta on GitHub">
+              <Github className="size-4" />
+            </a>
+          </Button>
+          <ThemeToggle />
+          {user ? (
+            <UserMenu name={user.name ?? user.email ?? "Account"} email={user.email} signOut={signOutAction} />
+          ) : configured ? (
+            <form action={signInAction}>
+              <Button type="submit" variant="ghost" size="sm">
+                Sign in with Google
+              </Button>
             </form>
-          </>
-        ) : configured ? (
-          <form action={signInAction}>
-            <button type="submit" style={buttonStyle}>
-              Sign in with Google
-            </button>
-          </form>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </header>
   );

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
+import { ThemeProvider } from "@/components/site/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Pasta",
-  description: "Compare answers from multiple AI models side by side.",
+  title: "AI Pasta: compare AI models side by side",
+  description:
+    "Send one prompt to GPT, Claude, Gemini, DeepSeek, Groq and Qwen at once. Compare answers, latency and cost with your own API keys.",
 };
 
 export default function RootLayout({
@@ -24,12 +28,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Header />
-        {children}
+    // next-themes sets the theme class before paint, so the server markup differs on purpose.
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} min-h-dvh font-sans antialiased`}>
+        <ThemeProvider>
+          <TooltipProvider delayDuration={300}>
+            <Header />
+            {children}
+            <Toaster position="bottom-right" />
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
